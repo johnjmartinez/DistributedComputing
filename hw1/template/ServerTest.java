@@ -1,3 +1,5 @@
+import org.junit.Test;
+
 import static org.junit.Assert.*;
 
 /**
@@ -5,4 +7,9 @@ import static org.junit.Assert.*;
  */
 public class ServerTest {
 
+    @Test
+    public void simpleServerTest() {
+        String[] args = {"20", "5555", "5000"};
+        Server.main(args);
+    }
 }

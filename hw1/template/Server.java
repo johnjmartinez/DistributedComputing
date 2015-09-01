@@ -1,7 +1,17 @@
+import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.util.HashMap;
 
 public class Server {
     // Create Data structure out here that holds the array or data structure of reservations, init on main
+    HashMap<Integer, String> reservationSystem;
+
+    //Constructor for server
+    public Server(Integer size) {
+        //Is this the right data structure? not sure right now
+        reservationSystem = new HashMap<Integer, String>();
+    }
+
     public static void main (String[] args) {
     int N;
     int tcpPort;
@@ -21,22 +31,45 @@ public class Server {
 
     // TODO: handle request from clients
     // TODO: make sure ports are selected correct; can UDP and TCP happen at the same time?
-    // Get ports
-    // Make data structure
+
+    Server myServer = new Server(N);
+    System.out.println("starting server");
+
     // Main loop goes here, while (true)
         try {
-            while(true) {
-                DatagramSocket datasocket = new DatagramSocket(udpPort);
-                //Hand data packet
 
+            while(true) {
+                DatagramSocket socket = new DatagramSocket(4445);
+                byte[] buf = new byte[256];
+                DatagramPacket packet = new DatagramPacket(buf, buf.length);
+                
+                socket.receive(packet);
+                String received = new String(packet.getData(), 0, packet.getLength());
+                System.out.println("Received: " + received);
+
+                //Hand data packet
+                if (received.equals("reserve")) {
+
+                } else if (received.equals("bookSeat")) {
+
+                } else if (received.equals("search")) {
+
+                } else if (received.equals("delete")) {
+
+                } else  {
+                    System.out.println("Not valid request");
+                }
                 //Parse packet
 
+                socket.close();
 
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
+
     // Utilizing boolean for ease of checking in main loop
     public boolean reserve() {
         return false;
