@@ -1,5 +1,6 @@
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.util.HashMap;
 
 public class Server {
@@ -37,9 +38,10 @@ public class Server {
 
     // Main loop goes here, while (true)
         try {
+            System.out.println(InetAddress.getLocalHost());
 
             while(true) {
-                DatagramSocket socket = new DatagramSocket(4445);
+                DatagramSocket socket = new DatagramSocket(udpPort);
                 byte[] buf = new byte[256];
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
                 

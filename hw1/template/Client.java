@@ -22,10 +22,8 @@ public class Client {
         udpPort = Integer.parseInt(args[2]);
         try {
             DatagramSocket socket = new DatagramSocket();
-            byte[] buf = new byte[256];
-            InetAddress address = InetAddress.getByName(args[0]);
-            //DatagramPacket packet = new DatagramPacket(buf, buf.length, address, 4445);
-            //socket.send(packet); //this is what you do
+            byte[] buf;
+            InetAddress address = InetAddress.getByName(hostAddress);
 
             Scanner sc = new Scanner(System.in);
             while(sc.hasNextLine()) {
@@ -33,21 +31,33 @@ public class Client {
                 String[] tokens = cmd.split(" ");
 
                 if (tokens[0].equals("reserve")) {
+                    //TODO: implement checking of parameters for reserve, sending of command
+                    //reserve <name> T|U
                     buf = tokens[0].getBytes();
                     DatagramPacket packet = new DatagramPacket(buf, buf.length, address, 4445);
                     socket.send(packet);
-                    socket.close();
-                    // TODO: send appropriate command to the server and display the
-                    // appropriate responses form the server
+
                 } else if (tokens[0].equals("bookSeat")) {
-                    // TODO: send appropriate command to the server and display the
-                    // appropriate responses form the server
+                    //TODO: implement checking of parameters for bookSeat, sending of command
+                    //bookSeat <name> <seatNum> T|U
+                    buf = tokens[0].getBytes();
+                    DatagramPacket packet = new DatagramPacket(buf, buf.length, address, 4445);
+                    socket.send(packet);
+
                 } else if (tokens[0].equals("search")) {
-                    // TODO: send appropriate command to the server and display the
-                    // appropriate responses form the server
+                    //TODO: implement checking of parameters for search, sending of command
+                    //search <name> T|U
+                    buf = tokens[0].getBytes();
+                    DatagramPacket packet = new DatagramPacket(buf, buf.length, address, 4445);
+                    socket.send(packet);
+
                 } else if (tokens[0].equals("delete")) {
-                    // TODO: send appropriate command to the server and display the
-                    // appropriate responses form the server
+                    //TODO: implement checking of parameters for delete, sending of command
+                    //delete <name> T|U
+                    buf = tokens[0].getBytes();
+                    DatagramPacket packet = new DatagramPacket(buf, buf.length, address, 4445);
+                    socket.send(packet);
+
                 } else {
                     System.out.println("ERROR: No such command");
                 }
