@@ -1,10 +1,14 @@
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.Socket;
 import java.util.HashMap;
 
 public class Server {
     // Create Data structure out here that holds the array or data structure of reservations, init on main
+    // Accesses to this must be Synchronized
     HashMap<Integer, String> reservationSystem;
 
     //Constructor for server
@@ -64,7 +68,6 @@ public class Server {
                 //Parse packet
 
                 socket.close();
-
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -90,5 +93,27 @@ public class Server {
     // Utilizing boolean for ease of checking in main loop, as it is determininstic.
     public boolean delete() {
         return false;
+    }
+}
+
+class HandleRequest implements Runnable{
+    Socket clientSocket;
+
+    HandleRequest(Socket server) {
+        this.clientSocket = server;
+    }
+    @Override
+    public void run() {
+
+        try {
+            InputStream input  = clientSocket.getInputStream();
+            OutputStream output = clientSocket.getOutputStream();
+            output.write(("Answering").getBytes());
+            input.close();
+            output.close();
+        } catch (Exception e) {
+
+            e.printStackTrace();
+        }
     }
 }
