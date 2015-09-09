@@ -4,8 +4,6 @@ import java.net.*;
 import java.util.HashMap;
 
 public class Server {
-    // Create Data structure out here that holds the array or data structure of reservations, init on main
-    // Accesses to this must be Synchronized
     SeatingData myseats;
 
     //Constructor for server, needs only size for seating data
@@ -38,11 +36,11 @@ public class Server {
     TCPServer myTCP = new TCPServer(tcpPort, myServer.myseats);
     new Thread(myTCP).start();
 
-    // Main loop goes here, while (true)
         try {
             System.out.println(InetAddress.getLocalHost());
 
             while(true) {
+                // UDP Loop goes here
                 DatagramSocket socket = new DatagramSocket(udpPort);
                 byte[] buf = new byte[256];
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
@@ -51,7 +49,7 @@ public class Server {
                 String received = new String(packet.getData(), 0, packet.getLength());
                 System.out.println("Received: " + received);
 
-                //Hand data packet
+                //Handle data packet
                 if (received.equals("reserve")) {
 
                 } else if (received.equals("bookSeat")) {
@@ -63,7 +61,6 @@ public class Server {
                 } else  {
                     System.out.println("Not valid request");
                 }
-                //Parse packet
 
                 socket.close();
             }
@@ -71,30 +68,11 @@ public class Server {
             e.printStackTrace();
         }
     }
-
-
-    // Utilizing boolean for ease of checking in main loop
-    public boolean reserve() {
-        return false;
-    }
-
-    // Utilizing boolean for ease of checking in main loop
-    public boolean bookSeat() {
-        return false;
-    }
-
-    // Using string in this instance, as this is a read (don't care)
-    public String search() {
-        return "";
-    }
-
-    // Utilizing boolean for ease of checking in main loop, as it is determininstic.
-    public boolean delete() {
-        return false;
-    }
 }
 
 class TCPServer implements Runnable {
+    // Main TCP Server, runs initial socket connection, then
+    // looping of socket accepts that spawns client threads.
     SeatingData seatingData;
     ServerSocket serverSocket = null;
     Socket clientSocket = null;
@@ -118,23 +96,27 @@ class TCPServer implements Runnable {
         }
 
         while(true) {
+            //Main TCP Loop here
             try {
                 this.clientSocket = this.serverSocket.accept();
             } catch (Exception e){
                 e.printStackTrace();
             }
-            new Thread(new HandleRequest(clientSocket, "Multithreaded Server")).start();
+            new Thread(new HandleRequest(clientSocket, "Multithreaded Server", seatingData)).start();
         }
     }
 }
 
 class HandleRequest implements Runnable{
+    // Handles each of the client sockets concurrently
     Socket clientSocket;
     String serverText = null;
+    SeatingData seatingData;
 
-    HandleRequest(Socket clientSocket, String serverText) {
+    HandleRequest(Socket clientSocket, String serverText, SeatingData seatingData) {
         this.clientSocket = clientSocket;
         this.serverText   = serverText;
+        this.seatingData = seatingData;
     }
     @Override
     public void run() {
@@ -142,7 +124,23 @@ class HandleRequest implements Runnable{
         try {
             InputStream input  = clientSocket.getInputStream();
             OutputStream output = clientSocket.getOutputStream();
+            //TODO: Maybe use Bufferedinputstream here?
+            String received = ""; //TODO: get data from inputstream
+
             output.write(("Answering").getBytes());
+
+            if (received.equals("reserve")) {
+                
+            } else if (received.equals("bookSeat")) {
+
+            } else if (received.equals("search")) {
+
+            } else if (received.equals("delete")) {
+
+            } else  {
+                System.out.println("Not valid request");
+            }
+
             input.close();
             output.close();
         } catch (Exception e) {
@@ -153,10 +151,29 @@ class HandleRequest implements Runnable{
 }
 
 class SeatingData {
+    // Main seating datastructure that allows for seat reservations.
+    // Uses synchronized to ensure proper behavior with concurrent users.
+
     final Integer seat_allocation;
     HashMap<Integer, String> reservationSystem;
 
     public SeatingData(Integer seats) {
         this.seat_allocation = seats;
+    }
+
+    synchronized public boolean reserve() {
+        return false;
+    }
+
+    synchronized public boolean bookSeat() {
+        return false;
+    }
+
+    synchronized public String search() {
+        return "";
+    }
+
+    synchronized public boolean delete() {
+        return false;
     }
 }
