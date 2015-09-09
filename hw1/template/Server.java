@@ -1,9 +1,6 @@
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.Socket;
+import java.net.*;
 import java.util.HashMap;
 
 public class Server {
@@ -35,7 +32,6 @@ public class Server {
     udpPort = Integer.parseInt(args[2]);
 
     // TODO: handle request from clients
-    // TODO: make sure ports are selected correct; can UDP and TCP happen at the same time?
 
     Server myServer = new Server(N);
     System.out.println("starting server");
@@ -43,6 +39,8 @@ public class Server {
     // Main loop goes here, while (true)
         try {
             System.out.println(InetAddress.getLocalHost());
+            ServerSocket serverSocket = null;
+            serverSocket = new ServerSocket(tcpPort);
 
             while(true) {
                 DatagramSocket socket = new DatagramSocket(udpPort);
@@ -68,6 +66,15 @@ public class Server {
                 //Parse packet
 
                 socket.close();
+
+//                Socket clientSocket = null;
+//                try {
+//                    clientSocket = serverSocket.accept();
+//                    System.out.println("accepted");
+//                } catch (Exception e) {
+//                    e.printStackTrace();
+//                }
+//                new Thread(new HandleRequest(clientSocket, "MultithreadServer")).start();
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -98,9 +105,11 @@ public class Server {
 
 class HandleRequest implements Runnable{
     Socket clientSocket;
+    String serverText = null;
 
-    HandleRequest(Socket server) {
-        this.clientSocket = server;
+    HandleRequest(Socket clientSocket, String serverText) {
+        this.clientSocket = clientSocket;
+        this.serverText   = serverText;
     }
     @Override
     public void run() {
