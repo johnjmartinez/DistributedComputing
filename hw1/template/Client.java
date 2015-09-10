@@ -36,90 +36,115 @@ public class Client {
                 String cmd = sc.nextLine();
                 String[] tokens = cmd.split(" ");
 
+                if (tokens.length == 3) {
+                    if (tokens[0].equals("reserve")) {
 
-                if (tokens[0].equals("reserve")) {
-                    //TODO: implement checking of parameters for reserve, sending of command
-                    //reserve <name> T|U
-                    //Code for UDP
-                    if (tokens[2].equals(Integer.toString(udpPort))) {
-                        buf = tokens[0].getBytes();
-                        packet = new DatagramPacket(buf, buf.length, address, udpPort);
-                        socket.send(packet);
-                    //Code for TCP
-                    } else if (tokens[2].equals(Integer.toString(tcpPort))) {
-                        clientSocket = new Socket(hostAddress, tcpPort);
-                        outToServer = new DataOutputStream(clientSocket.getOutputStream());
-                        inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                        outToServer.writeBytes(tokens[0]);
-                        String answer = inFromServer.readLine();
-                        System.out.println("Server:" + answer);
-                        clientSocket.close();
+                        //TODO: implement checking of parameters for reserve, sending of command
+                        //reserve <name> T|U
+                        //Code for UDP
+                        if (tokens[2].equals(Integer.toString(udpPort))) {
+                            buf = prepareMessage(tokens);
+                            packet = new DatagramPacket(buf, buf.length, address, udpPort);
+                            socket.send(packet);
+                            //Code for TCP
+                        } else if (tokens[2].equals(Integer.toString(tcpPort))) {
+                            clientSocket = new Socket(hostAddress, tcpPort);
+                            outToServer = new DataOutputStream(clientSocket.getOutputStream());
+                            inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                            outToServer.writeBytes(tcpMessage(tokens));
+                            String answer = inFromServer.readLine();
+                            System.out.println("Server:" + answer);
+                            clientSocket.close();
+                        }
+
+                    } else if (tokens[0].equals("bookSeat")) {
+                        //TODO: implement checking of parameters for bookSeat, sending of command
+                        //bookSeat <name> <seatNum> T|U
+                        //Code for UDP
+                        if (tokens[2].equals(Integer.toString(udpPort))) {
+                            buf = prepareMessage(tokens);
+                            packet = new DatagramPacket(buf, buf.length, address, udpPort);
+                            socket.send(packet);
+                            //Code for TCP
+                        } else if (tokens[2].equals(Integer.toString(tcpPort))) {
+                            clientSocket = new Socket(hostAddress, tcpPort);
+                            outToServer = new DataOutputStream(clientSocket.getOutputStream());
+                            inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                            outToServer.writeBytes(tcpMessage(tokens));
+                            String answer = inFromServer.readLine();
+                            System.out.println("Server:" + answer);
+                            clientSocket.close();
+                        }
+
+                    } else if (tokens[0].equals("search")) {
+                        //TODO: implement checking of parameters for search, sending of command
+                        //search <name> T|U
+                        //Code for UDP
+                        if (tokens[2].equals(Integer.toString(udpPort))) {
+                            buf = prepareMessage(tokens);
+                            packet = new DatagramPacket(buf, buf.length, address, udpPort);
+                            socket.send(packet);
+                            //Code for TCP
+                        } else if (tokens[2].equals(Integer.toString(tcpPort))) {
+                            clientSocket = new Socket(hostAddress, tcpPort);
+                            outToServer = new DataOutputStream(clientSocket.getOutputStream());
+                            inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                            outToServer.writeBytes(tcpMessage(tokens));
+                            String answer = inFromServer.readLine();
+                            System.out.println("Server:" + answer);
+                            clientSocket.close();
+                        }
+
+                    } else if (tokens[0].equals("delete")) {
+                        //TODO: implement checking of parameters for delete, sending of command
+                        //delete <name> T|U
+                        //Code for UDP
+                        if (tokens[2].equals(Integer.toString(udpPort))) {
+                            buf = prepareMessage(tokens);
+                            packet = new DatagramPacket(buf, buf.length, address, udpPort);
+                            socket.send(packet);
+                            //Code for TCP
+                        } else if (tokens[2].equals(Integer.toString(tcpPort))) {
+                            clientSocket = new Socket(hostAddress, tcpPort);
+                            outToServer = new DataOutputStream(clientSocket.getOutputStream());
+                            inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                            outToServer.writeBytes(tcpMessage(tokens));
+                            String answer = inFromServer.readLine();
+                            System.out.println("Server:" + answer);
+                            clientSocket.close();
+                        }
+
+                    } else {
+                        System.out.println("ERROR: No such command");
                     }
-
-                } else if (tokens[0].equals("bookSeat")) {
-                    //TODO: implement checking of parameters for bookSeat, sending of command
-                    //bookSeat <name> <seatNum> T|U
-                    //Code for UDP
-                    if (tokens[2].equals(Integer.toString(udpPort))) {
-                        buf = tokens[0].getBytes();
-                        packet = new DatagramPacket(buf, buf.length, address, udpPort);
-                        socket.send(packet);
-                        //Code for TCP
-                    } else if (tokens[2].equals(Integer.toString(tcpPort))) {
-                        clientSocket = new Socket(hostAddress, tcpPort);
-                        outToServer = new DataOutputStream(clientSocket.getOutputStream());
-                        inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                        outToServer.writeBytes(tokens[0]);
-                        String answer = inFromServer.readLine();
-                        System.out.println("Server:" + answer);
-                        clientSocket.close();
-                    }
-
-                } else if (tokens[0].equals("search")) {
-                    //TODO: implement checking of parameters for search, sending of command
-                    //search <name> T|U
-                    //Code for UDP
-                    if (tokens[2].equals(Integer.toString(udpPort))) {
-                        buf = tokens[0].getBytes();
-                        packet = new DatagramPacket(buf, buf.length, address, udpPort);
-                        socket.send(packet);
-                        //Code for TCP
-                    } else if (tokens[2].equals(Integer.toString(tcpPort))) {
-                        clientSocket = new Socket(hostAddress, tcpPort);
-                        outToServer = new DataOutputStream(clientSocket.getOutputStream());
-                        inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                        outToServer.writeBytes(tokens[0]);
-                        String answer = inFromServer.readLine();
-                        System.out.println("Server:" + answer);
-                        clientSocket.close();
-                    }
-
-                } else if (tokens[0].equals("delete")) {
-                    //TODO: implement checking of parameters for delete, sending of command
-                    //delete <name> T|U
-                    //Code for UDP
-                    if (tokens[2].equals(Integer.toString(udpPort))) {
-                        buf = tokens[0].getBytes();
-                        packet = new DatagramPacket(buf, buf.length, address, udpPort);
-                        socket.send(packet);
-                        //Code for TCP
-                    } else if (tokens[2].equals(Integer.toString(tcpPort))) {
-                        clientSocket = new Socket(hostAddress, tcpPort);
-                        outToServer = new DataOutputStream(clientSocket.getOutputStream());
-                        inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                        outToServer.writeBytes(tokens[0]);
-                        String answer = inFromServer.readLine();
-                        System.out.println("Server:" + answer);
-                        clientSocket.close();
-                    }
-
                 } else {
-                    System.out.println("ERROR: No such command");
+                    System.out.println("Need 3 arguments");
                 }
+
             }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public static byte[] prepareMessage(String[] tokens) {
+        byte[] buf;
+        String var = "";
+        var = var.concat(tokens[0] + " ");
+        var = var.concat(tokens[1] + " ");
+        var = var.concat(tokens[2]);
+        buf = var.getBytes();
+
+        return buf;
+    }
+
+    public static String tcpMessage(String[] tokens) {
+        String var = "";
+        var = var.concat(tokens[0] + " ");
+        var = var.concat(tokens[1] + " ");
+        var = var.concat(tokens[2]);
+
+        return var;
     }
 }
