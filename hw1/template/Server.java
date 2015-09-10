@@ -1,7 +1,9 @@
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.*;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Server {
     SeatingData myseats;
@@ -47,16 +49,19 @@ public class Server {
                 
                 socket.receive(packet);
                 String received = new String(packet.getData(), 0, packet.getLength());
-                System.out.println("Received: " + received);
-
+                System.out.println("Received (UDP): " + received);
+                String[] tokens = received.split(" ");
                 //Handle data packet
-                if (received.equals("reserve")) {
 
-                } else if (received.equals("bookSeat")) {
+                if (tokens[0].equals("reserve")) {
+                    if (!myServer.myseats.reserve(tokens[1])) {
+                        System.out.println("Seat already booked against the name provided");
+                    }
+                } else if (tokens[0].equals("bookSeat")) {
 
-                } else if (received.equals("search")) {
+                } else if (tokens[0].equals("search")) {
 
-                } else if (received.equals("delete")) {
+                } else if (tokens[0].equals("delete")) {
 
                 } else  {
                     System.out.println("Not valid request");
@@ -102,7 +107,7 @@ class TCPServer implements Runnable {
             } catch (Exception e){
                 e.printStackTrace();
             }
-            new Thread(new HandleRequest(clientSocket, "Multithreaded Server", seatingData)).start();
+            new Thread(new HandleRequest(clientSocket, seatingData)).start();
         }
     }
 }
@@ -113,9 +118,8 @@ class HandleRequest implements Runnable{
     String serverText = null;
     SeatingData seatingData;
 
-    HandleRequest(Socket clientSocket, String serverText, SeatingData seatingData) {
+    HandleRequest(Socket clientSocket, SeatingData seatingData) {
         this.clientSocket = clientSocket;
-        this.serverText   = serverText;
         this.seatingData = seatingData;
     }
     @Override
@@ -124,18 +128,20 @@ class HandleRequest implements Runnable{
         try {
             InputStream input  = clientSocket.getInputStream();
             OutputStream output = clientSocket.getOutputStream();
-            //TODO: Maybe use Bufferedinputstream here?
-            String received = ""; //TODO: get data from inputstream
 
-            output.write(("Answering").getBytes());
+            BufferedReader inputReader = new BufferedReader(new InputStreamReader(input));
+            String received = inputReader.readLine();
+            System.out.println("Received (TCP): " + received);
+            //output.write(("Answering").getBytes());
 
-            if (received.equals("reserve")) {
-                
-            } else if (received.equals("bookSeat")) {
+            String[] tokens = received.split(" ");
+            if (tokens[0].equals("reserve")) {
 
-            } else if (received.equals("search")) {
+            } else if (tokens[0].equals("bookSeat")) {
 
-            } else if (received.equals("delete")) {
+            } else if (tokens[0].equals("search")) {
+
+            } else if (tokens[0].equals("delete")) {
 
             } else  {
                 System.out.println("Not valid request");
@@ -151,29 +157,65 @@ class HandleRequest implements Runnable{
 }
 
 class SeatingData {
-    // Main seating datastructure that allows for seat reservations.
+    // Main seating data structure that allows for seat reservations.
     // Uses synchronized to ensure proper behavior with concurrent users.
 
     final Integer seat_allocation;
-    HashMap<Integer, String> reservationSystem;
+    ConcurrentHashMap<String, Integer> reservationSystem;
+    //
 
     public SeatingData(Integer seats) {
         this.seat_allocation = seats;
+        reservationSystem = new ConcurrentHashMap<String, Integer>();
     }
 
-    synchronized public boolean reserve() {
+    public boolean reserve(String name) {
+        if (!search(name)) {
+            System.out.println("No name found, free to reserve");
+            Integer seat = findOpenSeat();
+            System.out.println("Writing" + name + " " + seat);
+            writeSeats(name, seat);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public boolean bookSeat() {
         return false;
     }
 
-    synchronized public boolean bookSeat() {
+    public boolean search(String name) {
+        return reservationSystem.containsKey(name);
+
+    }
+
+    public boolean delete() {
         return false;
     }
 
-    synchronized public String search() {
-        return "";
+    synchronized void writeSeats(String name, Integer seatnum) {
+        reservationSystem.put(name, seatnum);
     }
 
-    synchronized public boolean delete() {
-        return false;
+    boolean seatFree(Integer seatcheck) {
+        Set<Integer> res_seats = new HashSet<Integer>();
+        for (Integer myseatnum: reservationSystem.values()) {
+            res_seats.add(myseatnum);
+        }
+        return res_seats.contains(seatcheck);
+    }
+
+    Integer findOpenSeat() {
+        Set<Integer> res_seats = new HashSet<Integer>();
+        for (Integer myseatnum: reservationSystem.values()) {
+            res_seats.add(myseatnum);
+        }
+        for (int i = 0; i < seat_allocation; i++) {
+            if (!res_seats.contains(i)) {
+                return i;
+            }
+        }
+        return null;
     }
 }
