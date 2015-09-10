@@ -216,10 +216,10 @@ class SeatingData {
     public boolean delete(String name) {
         if (search(name)) {
             writeSeats(name, 0, true);
+            return true;
         } else {
             return false;
         }
-        return false;
     }
 
     synchronized void writeSeats(String name, Integer seatnum, boolean delete) {

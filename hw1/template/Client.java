@@ -36,7 +36,6 @@ public class Client {
                 String cmd = sc.nextLine();
                 String[] tokens = cmd.split(" ");
 
-                if (tokens.length == 3) {
                     if (tokens[0].equals("reserve")) {
 
                         //TODO: implement checking of parameters for reserve, sending of command
@@ -125,9 +124,8 @@ public class Client {
                     } else {
                         System.out.println("ERROR: No such command");
                     }
-                } else {
-                    System.out.println("Need 3 arguments");
-                }
+
+
 
             }
 
