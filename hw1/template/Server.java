@@ -1,6 +1,5 @@
 import java.io.*;
 import java.net.*;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -55,14 +54,32 @@ public class Server {
 
                 if (tokens[0].equals("reserve")) {
                     if (!myServer.myseats.reserve(tokens[1])) {
+                        //TODO: return packet back to user with the message below,
                         System.out.println("Seat already booked against the name provided");
+                    } else {
+                        //Seat assigned to you is <seat-number>
                     }
                 } else if (tokens[0].equals("bookSeat")) {
-
+                    if (!myServer.myseats.bookSeat(tokens[1],Integer.getInteger(tokens[2]))) {
+                        //TODO return the two types of answers.  May need to not use boolean
+                        System.out.println("<seatNum> is not available");
+                    } else {
+                        //Seat assigned to you is <seat-number>
+                    }
                 } else if (tokens[0].equals("search")) {
-
+                    if (!myServer.myseats.search(tokens[1])) {
+                        System.out.println("No reservation found for <name>");
+                    } else {
+                        //Success
+                        // Return seatnum
+                    }
                 } else if (tokens[0].equals("delete")) {
-
+                    if (!myServer.myseats.delete(tokens[1])) {
+                        System.out.println("No reservation found for <name>");
+                    } else {
+                        //Success
+                        //Return seatnum
+                    }
                 } else  {
                     System.out.println("Not valid request");
                 }
@@ -174,14 +191,20 @@ class SeatingData {
             System.out.println("No name found, free to reserve");
             Integer seat = findOpenSeat();
             System.out.println("Writing" + name + " " + seat);
-            writeSeats(name, seat);
+            writeSeats(name, seat, false);
             return true;
         } else {
             return false;
         }
     }
 
-    public boolean bookSeat() {
+    public boolean bookSeat(String name, Integer seatnum) {
+        if (!search(name)) {
+            if (seatFree(seatnum)) {
+                writeSeats(name, seatnum, false);
+                return true;
+            }
+        }
         return false;
     }
 
@@ -190,12 +213,21 @@ class SeatingData {
 
     }
 
-    public boolean delete() {
+    public boolean delete(String name) {
+        if (search(name)) {
+            writeSeats(name, 0, true);
+        } else {
+            return false;
+        }
         return false;
     }
 
-    synchronized void writeSeats(String name, Integer seatnum) {
-        reservationSystem.put(name, seatnum);
+    synchronized void writeSeats(String name, Integer seatnum, boolean delete) {
+        if (!delete) {
+            reservationSystem.put(name, seatnum);
+        } else {
+            reservationSystem.remove(name);
+        }
     }
 
     boolean seatFree(Integer seatcheck) {
