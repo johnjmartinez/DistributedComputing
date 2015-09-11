@@ -60,7 +60,7 @@ public class Server {
                         //Seat assigned to you is <seat-number>
                     }
                 } else if (tokens[0].equals("bookSeat")) {
-                    if (!myServer.myseats.bookSeat(tokens[1],Integer.getInteger(tokens[2]))) {
+                    if (!myServer.myseats.bookSeat(tokens[1], tokens[2])) {
                         //TODO return the two types of answers.  May need to not use boolean
                         System.out.println("<seatNum> is not available");
                     } else {
@@ -198,10 +198,14 @@ class SeatingData {
         }
     }
 
-    public boolean bookSeat(String name, Integer seatnum) {
+    public boolean bookSeat(String name, String seatnum) {
+        seatnum = seatnum.replace("\n", "");
+        Integer seat_num_int = Integer.parseInt(seatnum);
         if (!search(name)) {
-            if (seatFree(seatnum)) {
-                writeSeats(name, seatnum, false);
+            System.out.println("name not reserved yet");
+            if (!seatFree(seat_num_int)) {
+                System.out.println("Seat is free");
+                writeSeats(name, seat_num_int, false);
                 return true;
             }
         }
@@ -224,6 +228,7 @@ class SeatingData {
 
     synchronized void writeSeats(String name, Integer seatnum, boolean delete) {
         if (!delete) {
+            System.out.println(seatnum + " " + name);
             reservationSystem.put(name, seatnum);
         } else {
             reservationSystem.remove(name);
