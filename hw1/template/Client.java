@@ -27,6 +27,7 @@ public class Client {
             InetAddress address = InetAddress.getByName(hostAddress);
             DatagramPacket packet;
 
+            // Meant for TCP
             DataOutputStream outToServer;
             BufferedReader inFromServer;
             Socket clientSocket;
@@ -45,14 +46,21 @@ public class Client {
                         buf = prepareMessage(tokens);
                         packet = new DatagramPacket(buf, buf.length, address, udpPort);
                         socket.send(packet);
-                        //Code for TCP
+
+                        buf = new byte[256];
+                        packet = new DatagramPacket(buf, buf.length);
+                        socket.receive(packet);
+                        String received = new String(packet.getData(), 0, packet.getLength());
+                        System.out.println("Server(U): " + received);
+
                     } else if (tokens[2].equals("T")) {
+                        //Code for TCP
                         clientSocket = new Socket(hostAddress, tcpPort);
                         outToServer = new DataOutputStream(clientSocket.getOutputStream());
                         inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                         outToServer.writeBytes(tcpMessage(tokens));
                         String answer = inFromServer.readLine();
-                        System.out.println("Server:" + answer);
+                        System.out.println("Server(T):" + answer);
                         clientSocket.close();
                     } else {
                         System.out.println("ERROR: No such command");
@@ -66,6 +74,13 @@ public class Client {
                         buf = prepareMessageLong(tokens);
                         packet = new DatagramPacket(buf, buf.length, address, udpPort);
                         socket.send(packet);
+
+                        buf = new byte[256];
+                        packet = new DatagramPacket(buf, buf.length);
+                        socket.receive(packet);
+                        String received = new String(packet.getData(), 0, packet.getLength());
+                        System.out.println("Server(U): " + received);
+
                         //Code for TCP
                     } else if (tokens[2].equals("T")) {
                         clientSocket = new Socket(hostAddress, tcpPort);
@@ -73,7 +88,7 @@ public class Client {
                         inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                         outToServer.writeBytes(tcpMessage(tokens));
                         String answer = inFromServer.readLine();
-                        System.out.println("Server:" + answer);
+                        System.out.println("Server(T):" + answer);
                         clientSocket.close();
                     } else {
                         System.out.println("ERROR: No such command");
@@ -87,6 +102,13 @@ public class Client {
                         buf = prepareMessage(tokens);
                         packet = new DatagramPacket(buf, buf.length, address, udpPort);
                         socket.send(packet);
+
+                        buf = new byte[256];
+                        packet = new DatagramPacket(buf, buf.length);
+                        socket.receive(packet);
+                        String received = new String(packet.getData(), 0, packet.getLength());
+                        System.out.println("Server(U): " + received);
+
                         //Code for TCP
                     } else if (tokens[2].equals("T")) {
                         clientSocket = new Socket(hostAddress, tcpPort);
@@ -94,7 +116,7 @@ public class Client {
                         inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                         outToServer.writeBytes(tcpMessage(tokens));
                         String answer = inFromServer.readLine();
-                        System.out.println("Server:" + answer);
+                        System.out.println("Server(T):" + answer);
                         clientSocket.close();
                     } else {
                         System.out.println("ERROR: No such command");
@@ -108,6 +130,13 @@ public class Client {
                         buf = prepareMessage(tokens);
                         packet = new DatagramPacket(buf, buf.length, address, udpPort);
                         socket.send(packet);
+
+                        buf = new byte[256];
+                        packet = new DatagramPacket(buf, buf.length);
+                        socket.receive(packet);
+                        String received = new String(packet.getData(), 0, packet.getLength());
+                        System.out.println("Server(U): " + received);
+
                         //Code for TCP
                     } else if (tokens[2].equals("T")) {
                         clientSocket = new Socket(hostAddress, tcpPort);
@@ -115,7 +144,7 @@ public class Client {
                         inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                         outToServer.writeBytes(tcpMessage(tokens));
                         String answer = inFromServer.readLine();
-                        System.out.println("Server:" + answer);
+                        System.out.println("Server(T):" + answer);
                         clientSocket.close();
                     } else {
                         System.out.println("ERROR: No such command");

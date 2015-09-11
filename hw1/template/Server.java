@@ -52,34 +52,58 @@ public class Server {
                 String[] tokens = received.split(" ");
                 //Handle data packet
 
+                Integer commandReturn;
+                String returnMessage;
+
                 if (tokens[0].equals("reserve")) {
-                    if (!myServer.myseats.reserve(tokens[1])) {
-                        //TODO: return packet back to user with the message below,
-                        System.out.println("Seat already booked against the name provided");
+
+                    commandReturn = myServer.myseats.reserve(tokens[1]);
+                    if (commandReturn == null) {
+                        returnMessage = "Seat already booked against the name provided";
                     } else {
-                        //Seat assigned to you is <seat-number>
+                        returnMessage = "Seat assigned to you is " + Integer.toString(commandReturn);
                     }
+                    buf = prepareMessage(returnMessage);
+
+                    packet = new DatagramPacket(buf, buf.length, packet.getAddress() , packet.getPort());
+                    socket.send(packet);
+
                 } else if (tokens[0].equals("bookSeat")) {
-                    if (!myServer.myseats.bookSeat(tokens[1], tokens[2])) {
-                        //TODO return the two types of answers.  May need to not use boolean
-                        System.out.println("<seatNum> is not available");
+                    commandReturn = myServer.myseats.bookSeat(tokens[1], tokens[2]);
+                    if (commandReturn == null) {
+                        returnMessage = tokens[2] + " is not available";
                     } else {
                         //Seat assigned to you is <seat-number>
+                        returnMessage = "Seat assigned to you is " + Integer.toString(commandReturn);
                     }
+                    buf = prepareMessage(returnMessage);
+
+                    packet = new DatagramPacket(buf, buf.length, packet.getAddress() , packet.getPort());
+                    socket.send(packet);
+
                 } else if (tokens[0].equals("search")) {
-                    if (!myServer.myseats.search(tokens[1])) {
-                        System.out.println("No reservation found for <name>");
+                    commandReturn = myServer.myseats.search(tokens[1]);
+                    if (commandReturn == null) {
+                        returnMessage = "No reservation found for " + tokens[1];
                     } else {
-                        //Success
-                        // Return seatnum
+                        returnMessage = Integer.toString(commandReturn);
                     }
+                    buf = prepareMessage(returnMessage);
+
+                    packet = new DatagramPacket(buf, buf.length, packet.getAddress() , packet.getPort());
+                    socket.send(packet);
+
                 } else if (tokens[0].equals("delete")) {
-                    if (!myServer.myseats.delete(tokens[1])) {
-                        System.out.println("No reservation found for <name>");
+                    commandReturn = myServer.myseats.delete(tokens[1]);
+                    if (commandReturn == null) {
+                        returnMessage = "No reservation found for " + tokens[1];
                     } else {
-                        //Success
-                        //Return seatnum
+                        returnMessage = Integer.toString(commandReturn);
                     }
+                    buf = prepareMessage(returnMessage);
+
+                    packet = new DatagramPacket(buf, buf.length, packet.getAddress() , packet.getPort());
+                    socket.send(packet);
                 } else  {
                     System.out.println("Not valid request");
                 }
@@ -89,6 +113,14 @@ public class Server {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+    public static byte[] prepareMessage(String message) {
+        byte[] buf;
+        String var = "";
+        var = var.concat(message + "\n");
+        buf = var.getBytes();
+
+        return buf;
     }
 }
 
@@ -186,49 +218,54 @@ class SeatingData {
         reservationSystem = new ConcurrentHashMap<String, Integer>();
     }
 
-    public boolean reserve(String name) {
-        if (!search(name)) {
-            System.out.println("No name found, free to reserve");
+    public Integer reserve(String name) {
+        if (search(name) == null) {
+            //System.out.println("No name found, free to reserve");
             Integer seat = findOpenSeat();
-            System.out.println("Writing" + name + " " + seat);
+            //System.out.println("Writing" + name + " " + seat);
             writeSeats(name, seat, false);
-            return true;
+            return seat;
         } else {
-            return false;
+            return null;
         }
     }
 
-    public boolean bookSeat(String name, String seatnum) {
+    public Integer bookSeat(String name, String seatnum) {
         seatnum = seatnum.replace("\n", "");
         Integer seat_num_int = Integer.parseInt(seatnum);
-        if (!search(name)) {
-            System.out.println("name not reserved yet");
+        if (search(name) == null) {
+            //System.out.println("name not reserved yet");
             if (!seatFree(seat_num_int)) {
-                System.out.println("Seat is free");
+                //System.out.println("Seat is free");
                 writeSeats(name, seat_num_int, false);
-                return true;
+                return seat_num_int;
             }
         }
-        return false;
+        return null;
     }
 
-    public boolean search(String name) {
-        return reservationSystem.containsKey(name);
-
-    }
-
-    public boolean delete(String name) {
-        if (search(name)) {
-            writeSeats(name, 0, true);
-            return true;
+    public Integer search(String name) {
+        if (reservationSystem.containsKey(name)) {
+            return reservationSystem.get(name);
         } else {
-            return false;
+            return null;
+        }
+
+    }
+
+    public Integer delete(String name) {
+        if (search(name) != null) {
+            Integer seat_temp = reservationSystem.get(name);
+            writeSeats(name, 0, true);
+            return seat_temp;
+        } else {
+            return null;
         }
     }
 
     synchronized void writeSeats(String name, Integer seatnum, boolean delete) {
         if (!delete) {
-            System.out.println(seatnum + " " + name);
+            //System.out.println(seatnum + " " + name);
             reservationSystem.put(name, seatnum);
         } else {
             reservationSystem.remove(name);
