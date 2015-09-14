@@ -1,8 +1,7 @@
 import java.io.*;
 import java.net.*;
-import java.net.DatagramPacket;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Server {
@@ -161,13 +160,14 @@ class TCPServer implements Runnable {
             }
         }
     }//END RUN()
-}//END CLASS TCPSERVER
+}//END TCPSERVER CLASS
 
 class HandleTCPRequest implements Runnable{
     // Handles each of the client sockets concurrently
     Socket clientSocket;
-    //String serverText = null;// --- for?
     SeatingData seatingData;
+    //String serverText = null;// --- for?
+
 
     HandleTCPRequest(Socket clientSocket, SeatingData seatingData) {
         this.clientSocket = clientSocket;
@@ -242,8 +242,8 @@ class HandleTCPRequest implements Runnable{
         catch (Exception e) {
             e.printStackTrace();
         }
-    }
-}
+    }//END RUN
+}//END HANDLER CLASS
 
 class SeatingData {
     // Main seating data structure that allows for seat reservations.
