@@ -1,4 +1,5 @@
 import java.io.*;
+import java.lang.Integer;
 import java.net.*;
 import java.util.Set;
 import java.util.HashSet;
@@ -19,7 +20,7 @@ public class Server {
         if (args.length != 3) {
             System.out.println("ERROR: Provide 3 arguments");
             System.out.println("\t(1) <N>: the total number of available seats");
-            System.out.println("\t\t\tassume the seat numbers are from 1 to N");
+            System.out.println("\t         assume the seat numbers are from 1 to N");
             System.out.println("\t(2) <tcpPort>: the port number for TCP connection");
             System.out.println("\t(3) <udpPort>: the port number for UDP connection");
 
@@ -31,7 +32,7 @@ public class Server {
         udpPort = Integer.parseInt(args[2]);
 
         // TODO: handle request from clients
-        System.out.println("starting server");
+        System.out.println("Starting server -- seats from 0 to "+ Integer.toString(N-1));
 
         //Start servers, including seating server
         Server myServer = new Server(N);
@@ -72,9 +73,12 @@ public class Server {
                     if (commandReturn == null) {
                         returnMessage = tokens[2] + " is not available";
                     }
-                    else { //Seat assigned to you is <seat-number>
-                        returnMessage = "Seat assigned to you is " + Integer.toString(commandReturn);
+                    else if (commandReturn.equals(Integer.MIN_VALUE)) {
+                        returnMessage = "Seat already booked against the name provided";
                     }
+                    else { //Seat assigned to you is <seat-number>
+                        returnMessage = "Seat assigned to " + tokens[1] + " is "
+                                + Integer.toString(commandReturn);                    }
                 }
                 else if (tokens[0].equals("search")) {
                     commandReturn = myServer.myseats.search(tokens[1]);
@@ -99,25 +103,19 @@ public class Server {
                 }
 
                 //send response packet
-                buf = prepareMessage(returnMessage);
+                returnMessage += "\n";
+                buf = returnMessage.getBytes();
                 packet = new DatagramPacket(buf, buf.length, packet.getAddress() , packet.getPort());
                 socket.send(packet);
+
                 socket.close();
             } //END WHILE TRUE --- UDP LOOP
         } //END TRY
         catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    public static byte[] prepareMessage(String message) {
-        byte[] buf;
-        String var = "";
-        var = var.concat(message + "\n");
-        buf = var.getBytes();
-        return buf;
-    }
-}
+    }//END MAIN
+}// END SERVER CLASS
 
 class TCPServer implements Runnable {
     // Main TCP Server, runs initial socket connection, then
@@ -168,7 +166,6 @@ class HandleTCPRequest implements Runnable{
     SeatingData seatingData;
     //String serverText = null;// --- for?
 
-
     HandleTCPRequest(Socket clientSocket, SeatingData seatingData) {
         this.clientSocket = clientSocket;
         this.seatingData = seatingData; //aka -- myServer.myseats
@@ -206,8 +203,12 @@ class HandleTCPRequest implements Runnable{
                 if (commandReturn == null) {
                     returnMessage = tokens[2] + " is not available";
                 }
+                else if (commandReturn.equals(Integer.MIN_VALUE)) {
+                    returnMessage = "Seat already booked against the name provided";
+                }
                 else { //Seat assigned to you is <seat-number>
-                    returnMessage = "Seat assigned to you is " + Integer.toString(commandReturn);
+                    returnMessage = "Seat assigned to " + tokens[1] + " is "
+                            + Integer.toString(commandReturn);
                 }
             }
             else if (tokens[0].equals("search")) {
@@ -232,7 +233,7 @@ class HandleTCPRequest implements Runnable{
                 System.out.println("Not valid request\t"+received);
             }
 
-            out.println(returnMessage);
+            out.println(returnMessage+"\n");
 
             //CLOSE ALL STREAMS AND SOCKET
             out.close();
@@ -272,8 +273,22 @@ class SeatingData {
 
     public Integer bookSeat(String name, String seatnum) {
         seatnum = seatnum.replace("\n", "");
-        Integer seat_num_int = Integer.parseInt(seatnum);
-        if (search(name) == null) {
+        Integer seat_num_int = -1;
+        try {
+            seat_num_int = Integer.parseInt(seatnum);
+        }
+        catch (NumberFormatException n) {
+            System.out.println("seatnum not valid - "+seatnum);
+            return null;
+        }
+
+        if (search(name) != null) {
+            return Integer.MIN_VALUE;
+        }
+        else if (seat_num_int < 0 || seat_num_int >= seat_allocation ) {
+            return null;
+        }
+        else { //search(name) == null
             //System.out.println("name not reserved yet");
             if (!seatFree(seat_num_int)) {
                 //System.out.println("Seat is free");
@@ -291,7 +306,6 @@ class SeatingData {
         else {
             return null;
         }
-
     }
 
     public Integer delete(String name) {

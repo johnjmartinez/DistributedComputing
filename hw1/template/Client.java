@@ -1,5 +1,4 @@
 import java.io.*;
-import java.io.PrintWriter;
 import java.net.*;
 import java.util.Scanner;
 
@@ -21,162 +20,136 @@ public class Client {
         tcpPort = Integer.parseInt(args[1]);
         udpPort = Integer.parseInt(args[2]);
 
-        try {
-            InetAddress address = InetAddress.getByName(hostAddress);
-            
-            //For UDP
-            byte[] buf;
-            DatagramPacket packet;
-            DatagramSocket socket = new DatagramSocket();
+        Scanner sc = new Scanner(System.in);
+        while(sc.hasNextLine()) {
+            String cmd = sc.nextLine();
+            String[] tokens = cmd.split(" ");
 
-            //FOR TCP
-            PrintWriter outToServer;
-            BufferedReader inFromServer;
-            Socket clientSocket;
-
-            Scanner sc = new Scanner(System.in);
-            while(sc.hasNextLine()) {
-                String cmd = sc.nextLine();
-                String[] tokens = cmd.split(" ");
-
-                //reserve <name> T|U -- First seat available, if any
-                if (tokens[0].equals("reserve")) {
-                    //TODO: implement checking of parameters for reserve, sending of command
-                    //Code for UDP
-                    if (tokens[2].equals("U")) {
-                        buf = prepareMessage(cmd);
-                        packet = new DatagramPacket(buf, buf.length, address, udpPort);
-                        socket.send(packet);
-
-                        buf = new byte[256];
-                        packet = new DatagramPacket(buf, buf.length);
-                        socket.receive(packet);
-                        String received = new String(packet.getData(), 0, packet.getLength());
-                        System.out.println("Server(U): " + received);
-
+             //reserve <name> T|U -- First seat available, if any
+            if (tokens[0].equals("reserve")) {
+                    if (tokens.length != 3) {
+                        System.out.println("ERROR: Invalid command\t- "+cmd);
+                        System.out.println(" syntax: reserve <name> <T|U>\n");
                     }
-                    //Code for TCP
-                    else if (tokens[2].equals("T")) {
-                        clientSocket = new Socket(address, tcpPort);
-                        outToServer = new PrintWriter(clientSocket.getOutputStream(), true );
-                        inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                        outToServer.println(cmd);
-                        
-                        String answer = inFromServer.readLine();
-                        System.out.println("Server(T):" + answer);
-                        clientSocket.close();
+                    else if (tokens[2].toLowerCase().equals("u")) {
+                        String response = UDPreq(cmd, hostAddress, udpPort);
+                        System.out.println("Server(U): " + response);
+                    }
+                    else if (tokens[2].toLowerCase().equals("t")) {
+                        String answer = TCPreq(cmd, hostAddress, tcpPort);
+                        System.out.println("Server(T): " + answer);
                     }
                     else {
-                        System.out.println("ERROR: No such command\t"+cmd);
+                        System.out.println("ERROR: Invalid command\t- "+cmd);
+                        System.out.println(" syntax: reserve <name> <T|U>\n");
                     }
+            }
+            //bookSeat <name> <seatNum> T|U -- specific seat if available
+            else if (tokens[0].equals("bookSeat")) {
+                if ( tokens.length != 4 ) { //CAN'T GET THIS SHITE TO WORK -- || isInt(tokens[2]) ) {
+                    System.out.println("ERROR: Invalid command\t- "+cmd);
+                    System.out.println(" syntax: bookSeat <name> <seatNum> <T|U>\n");
                 }
-
-                //bookSeat <name> <seatNum> T|U -- specific seat if available
-                else if (tokens[0].equals("bookSeat")) {
-                    //TODO: implement checking of parameters for bookSeat, sending of command
-                    //Code for UDP
-                    if (tokens[3].equals("U")) {
-                        buf = prepareMessage(cmd);
-                        packet = new DatagramPacket(buf, buf.length, address, udpPort);
-                        socket.send(packet);
-
-                        buf = new byte[256];
-                        packet = new DatagramPacket(buf, buf.length);
-                        socket.receive(packet);
-                        String received = new String(packet.getData(), 0, packet.getLength());
-                        System.out.println("Server(U): " + received);
-                    }
-                    //Code for TCP
-                    else if (tokens[3].equals("T")) {
-                        clientSocket = new Socket(address, tcpPort);
-                        outToServer = new PrintWriter(clientSocket.getOutputStream(), true);
-                        inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                        outToServer.println(cmd);
-                        
-                        String answer = inFromServer.readLine();
-                        System.out.println("Server(T):" + answer);
-                        clientSocket.close();
-                    }
-                    else {
-                        System.out.println("ERROR: No such command\t"+cmd);
-                    }
+                else if (tokens[3].toLowerCase().equals("u")) {
+                    String response = UDPreq(cmd, hostAddress, udpPort);
+                    System.out.println("Server(U): " + response);
                 }
-
-                //search <name> T|U
-                else if (tokens[0].equals("search")) {
-                    //TODO: implement checking of parameters for search, sending of command
-                    //Code for UDP
-                    if (tokens[2].equals("U")) {
-                        buf = prepareMessage(cmd);
-                        packet = new DatagramPacket(buf, buf.length, address, udpPort);
-                        socket.send(packet);
-
-                        buf = new byte[256];
-                        packet = new DatagramPacket(buf, buf.length);
-                        socket.receive(packet);
-                        String received = new String(packet.getData(), 0, packet.getLength());
-                        System.out.println("Server(U): " + received);
-                    }
-                    //Code for TCP
-                    else if (tokens[2].equals("T")) {
-                        clientSocket = new Socket(address, tcpPort);
-                        outToServer = new PrintWriter(clientSocket.getOutputStream(), true);
-                        inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                        outToServer.println(cmd);
-                        
-                        String answer = inFromServer.readLine();
-                        System.out.println("Server(T):" + answer);
-                        clientSocket.close();
-                    }
-                    else {
-                        System.out.println("ERROR: No such command\t"+cmd);
-                    }
-                }
-
-                //delete <name> T|U
-                else if (tokens[0].equals("delete")) {
-                    //TODO: implement checking of parameters for delete, sending of command
-                    //Code for UDP
-                    if (tokens[2].equals("U")) {
-                        buf = prepareMessage(cmd);
-                        packet = new DatagramPacket(buf, buf.length, address, udpPort);
-                        socket.send(packet);
-
-                        buf = new byte[256];
-                        packet = new DatagramPacket(buf, buf.length);
-                        socket.receive(packet);
-                        String received = new String(packet.getData(), 0, packet.getLength());
-                        System.out.println("Server(U): " + received);
-                    }
-                    //Code for TCP
-                    else if (tokens[2].equals("T")) {
-                        clientSocket = new Socket(address, tcpPort);
-                        outToServer = new PrintWriter(clientSocket.getOutputStream(), true);
-                        inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                        outToServer.println(cmd);
-
-                        String answer = inFromServer.readLine();
-                        System.out.println("Server(T):" + answer);
-                        clientSocket.close();
-                    }
-                    else {
-                        System.out.println("ERROR: No such command\t"+cmd);
-                    }
+                else if (tokens[3].toLowerCase().equals("t")) {
+                    String answer = TCPreq(cmd, hostAddress, tcpPort);
+                    System.out.println("Server(T): " + answer);
                 }
                 else {
-                    System.out.println("ERROR: No such command\t"+cmd);
+                    System.out.println("ERROR: Invalid command\t- "+cmd);
+                    System.out.println(" syntax: bookSeat <name> <seatNum> <T|U>\n");
                 }
-            }//END WHILE SCANNER
-        }//END TRY
+            }
+            //search <name> T|U
+            else if (tokens[0].equals("search")) {
+                if (tokens.length != 3) {
+                    System.out.println("ERROR: Invalid command\t- "+cmd);
+                    System.out.println(" syntax: search <name> <T|U>\n");
+                }
+                else if (tokens[2].toLowerCase().equals("u")) {
+                    String response = UDPreq(cmd, hostAddress, udpPort);
+                    System.out.println("Server(U): " + response);
+                }
+                else if (tokens[2].toLowerCase().equals("t")) {
+                    String answer = TCPreq(cmd, hostAddress, tcpPort);
+                    System.out.println("Server(T): " + answer);
+                }
+                else {
+                    System.out.println("ERROR: Invalid command\t- "+cmd);
+                    System.out.println(" syntax: search <name> <T|U>\n");
+                }
+            }
+            //delete <name> T|U
+            else if (tokens[0].equals("delete")) {
+                if (tokens.length != 3) {
+                    System.out.println("ERROR: Invalid command\t- "+cmd);
+                    System.out.println(" syntax: delete <name> <T|U>\n");
+                }
+                else if (tokens[2].toLowerCase().equals("u")) {
+                    String response = UDPreq(cmd, hostAddress, udpPort);
+                    System.out.println("Server(U): " + response);
+                }
+                else if (tokens[2].toLowerCase().equals("t")) {
+                    String answer = TCPreq(cmd, hostAddress, tcpPort);
+                    System.out.println("Server(T): " + answer);
+                }
+                else {
+                    System.out.println("ERROR: Invalid command\t- "+cmd);
+                    System.out.println(" syntax: delete <name> <T|U>\n");
+                }
+            }
+            else {
+                System.out.println("ERROR: No such command\t -"+cmd+"\n");
+            }
+        }//END WHILE SCANNER
+    }//END MAIN
+
+    public static String UDPreq (String cmd, String hostAddress, Integer port) {
+        String response = "Error in UDP request";
+
+        try {
+            byte[] buf = cmd.getBytes();
+            InetAddress address = InetAddress.getByName(hostAddress);
+            DatagramSocket socket = new DatagramSocket();
+            DatagramPacket packet = new DatagramPacket(buf, buf.length, address, port);
+
+            socket.send(packet);
+            buf = new byte[256];
+            packet = new DatagramPacket(buf, buf.length);
+            socket.receive(packet);
+            response = new String(packet.getData(), 0, packet.getLength());
+        }
         catch (Exception e) {
             e.printStackTrace();
         }
+
+        return response;
     }
 
-    public static byte[] prepareMessage(String cmd) {
-        byte[] buf;
-        buf = cmd.getBytes();
-        return buf;
+    public static String TCPreq (String cmd, String hostAddress, Integer port) {
+        String answer = "Error in TCP request";
+
+        try {
+            InetAddress address = InetAddress.getByName(hostAddress);
+            Socket clientSocket = new Socket(address, port);
+            PrintWriter outToServer = new PrintWriter(clientSocket.getOutputStream(), true);
+            BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+
+            outToServer.println(cmd);
+            answer = inFromServer.readLine();
+            clientSocket.close();
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return answer+"\n";
     }
 
+    public static boolean isInt (String token){
+        return token.matches("^\\d+\\n?$"); //AHHH!!! WHY WON'T IT WORK?????
+    }
 }
