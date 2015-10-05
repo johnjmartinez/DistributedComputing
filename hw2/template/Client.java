@@ -4,9 +4,7 @@ import java.util.Scanner;
 
 public class Client {
 
-    String currAddr;
-    String currPort;
-    final static int TIMEOUT = 100; //ms
+    final static int TIMEOUT = 100;//ms
 
     public static void main (String[] args) {
 
@@ -20,7 +18,7 @@ public class Client {
             String[] tokens = cmd.split(":");
 
             serversInfo[i][0] = tokens[0]; //ip adr
-            serversInfo[i][1] = tokens[1]; //port
+            serversInfo[i][1] = tokens[1]; //currPort
         }
 
         while(sc.hasNextLine()) {
@@ -35,18 +33,18 @@ public class Client {
                 }
                 else {
                     String answer = TCPreq(cmd, serversInfo);
-                    System.out.println("Server(T): " + answer);
+                    System.out.println("Server: " + answer);
                 }
             }
             //bookSeat <name> <seatNum> -- specific seat if available
             else if (tokens[0].equals("bookSeat")) {
-                if ( tokens.length != 3 ) { //CAN'T GET THIS SHITE TO WORK -- || isInt(toke
+                if ( tokens.length != 3 ) {
                     System.out.println("ERROR: Invalid command\t- "+cmd);
                     System.out.println(" syntax: bookSeat <name> <seatNum>\n");
                 }
                 else {
                     String answer = TCPreq(cmd, serversInfo);
-                    System.out.println("Server(T): " + answer);
+                    System.out.println("Server: " + answer);
                 }
             }
             //search <name>
@@ -57,7 +55,7 @@ public class Client {
                 }
                 else {
                     String answer = TCPreq(cmd, serversInfo);
-                    System.out.println("Server(T): " + answer);
+                    System.out.println("Server: " + answer);
                 }
             }
             //delete <name>
@@ -68,7 +66,7 @@ public class Client {
                 }
                 else  {
                     String answer = TCPreq(cmd, serversInfo);
-                    System.out.println("Server(T): " + answer);
+                    System.out.println("Server: " + answer);
                 }
             }
             else {
@@ -79,36 +77,48 @@ public class Client {
 
     public static String TCPreq (String cmd, String [][] serversInfo) {
 
-        String address;
-        int port;
+        String currAddr;
+        int currPort;
         Socket clientSocket;
 
         String answer = "Error in TCP request";
         int numSrvr = serversInfo.length;
 
         //ESTABLISH CONNECTION TO A LIVE SERVER
-        for (int id = 0; id < numSrvr; id = (id+1) % numSrvr) {
+        for (int id = 0; ; id = (id+1) % numSrvr) {
 
-            address = serversInfo[id][0];
-            port = Integer.parseInt(serversInfo[id][1]);
+            currAddr = serversInfo[id][0];
+            currPort = Integer.parseInt(serversInfo[id][1]);
 
             try {
-
-                clientSocket = new Socket(InetAddress.getByName(address), port);
+                clientSocket = new Socket(InetAddress.getByName(currAddr), currPort);
                 PrintWriter outToServer = new PrintWriter(clientSocket.getOutputStream(), true);
-                BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                BufferedReader inFromServer =
+                        new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 
-                outToServer.println("incoming_request");
+                //ESTABLISHING CONNECTION TO SERVER
+                //TODO: check answer==ACK
+                clientSocket.setSoTimeout(TIMEOUT);
+                outToServer.println("client_req");
                 answer = inFromServer.readLine();
-                //clientSocket.close();
-                }
-             catch (Exception e) {
+
+                //SERVER IS ALIVE ... SEND REQ
+                clientSocket.setSoTimeout(0);
+                outToServer.println(cmd);
+                answer = inFromServer.readLine();
+
+                clientSocket.close();
+            }
+            //TODO: output dead server, add delay?
+            catch (SocketTimeoutException t) {
+                continue;
+            }
+            catch (Exception e) {
                 e.printStackTrace();
-             }
+            }
 
+            break; //IF I GET TO HERE I'M GOOD
         }
-        
-
 
         return answer+"\n";
     }

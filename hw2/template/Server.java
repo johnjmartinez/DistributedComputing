@@ -1,15 +1,11 @@
-import java.util.Scanner;
+import java.io.*;
+import java.net.*;
+import java.util.*;
+import java.lang.*;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Server {
-
-    String currAddr;
-    String currPort;
-    SeatingData myseats;
-
-    //Constructor for server, needs only size for seating data
-    public Server(Integer size) {
-        this.myseats = new SeatingData(size);
-    }
 
     public static void main (String[] args) {
 
@@ -19,9 +15,11 @@ public class Server {
         int numSeat = sc.nextInt();
 
         String[][] serversInfo = new String[numServer][2];
+        SeatingData seatsObj = new SeatingData(numSeat);
 
+        //parse inputs to get the ips and ports of server
         for (int i = 0; i < numServer; i++) {
-        // TODO: parse inputs to get the ips and ports of server
+
             String cmd = sc.nextLine();
             String[] tokens = cmd.split(":");
 
@@ -29,36 +27,76 @@ public class Server {
             serversInfo[i][1] = tokens[1];
         }
 
-        //Start server, including seating object
-        Server myServer = new Server(N);
-        TCPServer myTCP = new TCPServer(tcpPort, myServer.myseats);
+        //Start server listening, including seating object
+        TCPServer myTCP = new TCPServer(serversInfo, myID, seatsObj);
         new Thread(myTCP).start();
-
     }
 
 }
 
-
 class TCPServer implements Runnable {
+
     // Main TCP Server, runs initial socket connection, then
     // looping of 'socket accepts' that spawns client threads.
+    final static int TIMEOUT = 100;//ms
 
-    SeatingData seatingData;
-    ServerSocket serverSocket = null;
-    Socket clientSocket = null;
-    Integer port;
-    Thread runningThread = null;
+    int port, id;
+    String[][] serversInfo;
+    SeatingData seatsObj;
+    ServerSocket serverSocket;
+    Socket clientSckt;
 
-    public TCPServer(Integer tcpport, SeatingData seatserver) {
-        this.seatingData = seatserver; //aka -- myServer.myseats
-        this.port = tcpport;
+    public TCPServer(String [][] info, int id, SeatingData seatsObj) {
+        this.seatsObj = seatsObj;
+        this.port = Integer.parseInt(info[id][1]);
+        this.id = id;
+        this.serversInfo = info;
+    }
+
+    public boolean synch (String addr, int port) {
+
+        String answer = "";
+        //ESTABLISH CONNECTION TO A LIVE SERVER
+        try {
+            Socket peerSckt = new Socket(InetAddress.getByName(addr), port);
+            PrintWriter peerOut = new PrintWriter(peerSckt.getOutputStream(), true);
+            BufferedReader peerIn =
+                    new BufferedReader(new InputStreamReader(peerSckt.getInputStream()));
+
+            //ESTABLISHING CONNECTION TO SERVER PEER
+            peerSckt.setSoTimeout(TIMEOUT);
+            peerOut.println("synch");
+            answer = peerIn.readLine();
+
+            clientSckt.close();
+        }
+        catch (SocketTimeoutException t) {
+            return false;
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        String[] token = answer.split(" ");
+        for (int i=0; i < token.length; i++) {
+            if (token[i].equals("")) { continue; }
+            String[] entry = token[i].split("=");
+            seatsObj.bookSeat(entry[0], entry[1]);
+        }
+
+        return true;
     }
 
     @Override
     public void run() {
-        //JJM --- not sure what's this for.
-        synchronized(this) {
-            this.runningThread = Thread.currentThread();
+
+        for (int i = 0; i < serversInfo.length; i++) {
+            if (i==id) { continue; }
+            else {
+                if (synch(serversInfo[i][0], Integer.parseInt(serversInfo[i][1]))) {
+                    break;
+                }
+            }
         }
 
         try {
@@ -67,13 +105,13 @@ class TCPServer implements Runnable {
         catch (Exception e) {
             e.printStackTrace();
         }
-
+        
         //Main TCP Loop here
         while(true) {
             try {
                 //Accept connection, spawn new thread
-                this.clientSocket = this.serverSocket.accept();
-                new Thread(new HandleTCPRequest(clientSocket, seatingData)).start();
+                this.clientSckt = this.serverSocket.accept();
+                new Thread(new HandleTCPRequest(clientSckt, seatsObj, serversInfo, id)).start();
             }
             catch (Exception e){
                 e.printStackTrace();
@@ -82,16 +120,24 @@ class TCPServer implements Runnable {
     }//END RUN()
 }//END TCPSERVER CLASS
 
+class HandleTCPRequest implements Runnable {
+    //HANDLES DIFF TYPES OF REQS FROM CLIENTS OR SERVER PEERS
+    final static int TIMEOUT = 100;//ms
 
-class HandleTCPRequest implements Runnable{
-    // Handles each of the client sockets concurrently
-    Socket clientSocket;
+    Socket clientSckt;
     SeatingData seatingData;
-    //String serverText = null;// --- for?
+    String[][] srvInfo;
+    int id;
+    int[] clk;
+    Queue<String> myQueue;
 
-    HandleTCPRequest(Socket clientSocket, SeatingData seatingData) {
-        this.clientSocket = clientSocket;
-        this.seatingData = seatingData; //aka -- myServer.myseats
+    HandleTCPRequest(Socket clientSckt, SeatingData seatingData, String[][] info, int id) {
+        this.clientSckt = clientSckt;
+        this.seatingData = seatingData;
+        this.srvInfo = info;
+        this.id = id;
+        this.clk = new int[info.length]; //init to 0 by default
+        myQueue = new LinkedList<String>();
     }
 
     @Override
@@ -99,74 +145,112 @@ class HandleTCPRequest implements Runnable{
 
         try {
             //get streams
-            BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-            //DEBUG? -- output.write(("Answering").getBytes());
+            BufferedReader in = new BufferedReader(new InputStreamReader(clientSckt.getInputStream()));
+            PrintWriter out = new PrintWriter(clientSckt.getOutputStream(), true);
 
             //get request and tokenize
             String received = in.readLine();
-            System.out.println("Received (TCP): " + received);
             String[] tokens = received.split(" ");
+            clk[id]++;
 
-            //Handle data packet as requested by client
-            Integer commandReturn = null;
-            String returnMessage = "ERROR occurred; try again";
+            if (tokens[0].equals("client_req")) {
+                out.println("ACK" + "\n");
+                clk[id]++;
 
-            if (tokens[0].equals("reserve")) {
-                commandReturn = seatingData.reserve(tokens[1]);
-                if (commandReturn == null) {
-                    returnMessage = "Seat already booked against the name provided";
-                }
-                else {
-                    returnMessage = "Seat assigned to you is " + Integer.toString(commandReturn);
-                }
+                received = in.readLine();
+                clk[id]++;
+
+                System.out.println("Client: " + received);
+                clk[id]++;
+
+                //LAMPORT'S -- read/writer version
+
+
+
+                //ENTER CS
+                String returnMessage = seatMaster(received);
+                out.println(returnMessage + "\n");
+
+                //LAMPORT'S REL -- synch others if write
+
             }
-            else if (tokens[0].equals("bookSeat")) {
-                commandReturn = seatingData.bookSeat(tokens[1], tokens[2]);
-                if (commandReturn == null) {
-                    returnMessage = tokens[2] + " is not available";
-                }
-                else if (commandReturn.equals(Integer.MIN_VALUE)) {
-                    returnMessage = "Seat already booked against the name provided";
-                }
-                else { //Seat assigned to you is <seat-number>
-                    returnMessage = "Seat assigned to " + tokens[1] + " is "
-                            + Integer.toString(commandReturn);
-                }
+            else if (tokens[0].equals("synch")) { // SYNCH ANOTHER PEER
+                clk[id]++;
+                System.out.println("Server: " + received);
+                out.println(seatingData.toString()+clk);
             }
-            else if (tokens[0].equals("search")) {
-                commandReturn = seatingData.search(tokens[1]);
-                if (commandReturn == null) {
-                    returnMessage = "No reservation found for " + tokens[1];
-                }
-                else {
-                    returnMessage = Integer.toString(commandReturn);
-                }
-            }
-            else if (tokens[0].equals("delete")) {
-                commandReturn = seatingData.delete(tokens[1]);
-                if (commandReturn == null) {
-                    returnMessage = "No reservation found for " + tokens[1];
-                }
-                else {
-                    returnMessage = Integer.toString(commandReturn);
-                }
-            }
-            else  {
-                System.out.println("Not valid request\t"+received);
+            else { //LAMPORTS RESPONSES
+
+
             }
 
-            out.println(returnMessage+"\n");
-
-            //CLOSE ALL STREAMS AND SOCKET
+            //CLOSE ALL STREAMS AND SOCKETS
             out.close();
             in.close();
-            clientSocket.close();
+            clientSckt.close();
+
         }
         catch (Exception e) {
             e.printStackTrace();
         }
+
     }//END RUN
+
+    public String seatMaster (String received) {
+
+        String[] tokens = received.split(" ");
+
+        //Handle data packet as requested by client
+        Integer commandReturn = null;
+        String returnMessage = "ERROR occurred; try again";
+
+        if (tokens[0].equals("reserve")) {
+            commandReturn = seatingData.reserve(tokens[1]);
+            if (commandReturn == null) {
+                returnMessage = "Seat already booked against the name provided";
+            }
+            else {
+                returnMessage = "Seat assigned to you is " + Integer.toString(commandReturn);
+            }
+        }
+        else if (tokens[0].equals("bookSeat")) {
+            commandReturn = seatingData.bookSeat(tokens[1], tokens[2]);
+            if (commandReturn == null) {
+                returnMessage = tokens[2] + " is not available";
+            }
+            else if (commandReturn.equals(Integer.MIN_VALUE)) {
+                returnMessage = "Seat already booked against the name provided";
+            }
+            else { //Seat assigned to you is <seat-number>
+                returnMessage = "Seat assigned to " + tokens[1] + " is "
+                        + Integer.toString(commandReturn);
+            }
+        }
+        else if (tokens[0].equals("search")) {
+            commandReturn = seatingData.search(tokens[1]);
+            if (commandReturn == null) {
+                returnMessage = "No reservation found for " + tokens[1];
+            }
+            else {
+                returnMessage = Integer.toString(commandReturn);
+            }
+        }
+        else if (tokens[0].equals("delete")) {
+            commandReturn = seatingData.delete(tokens[1]);
+            if (commandReturn == null) {
+                returnMessage = "No reservation found for " + tokens[1];
+            }
+            else {
+                returnMessage = Integer.toString(commandReturn);
+            }
+        }
+        else  {
+            System.out.println("Not valid request\t"+received);
+        }
+
+        return returnMessage;
+    }
+
 }//END HANDLER CLASS
 
 class SeatingData {
@@ -208,7 +292,7 @@ class SeatingData {
         if (search(name) != null) {
             return Integer.MIN_VALUE;
         }
-        else if (seat_num_int < 0 || seat_num_int >= seat_allocation ) {
+        else if (seat_num_int < 1 || seat_num_int > seat_allocation ) {
             return null;
         }
         else { //search(name) == null
@@ -265,11 +349,21 @@ class SeatingData {
         for (Integer myseatnum: reservationSystem.values()) {
             res_seats.add(myseatnum);
         }
-        for (int i = 0; i < seat_allocation; i++) {
+        for (int i = 1; i <= seat_allocation; i++) {
             if (!res_seats.contains(i)) {
                 return i;
             }
         }
         return null;
+    }
+
+    public String toString() {
+        String out = "";
+        List<Entry> entryList = new ArrayList<Entry>(reservationSystem.entrySet());
+        for (Entry temp : entryList) {
+            out += temp.toString();
+            out += " ";
+        }
+        return out;
     }
 }
