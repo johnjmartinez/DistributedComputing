@@ -40,18 +40,8 @@ class TCPServer implements Runnable {
     // looping of 'socket accepts' that spawns client threads.
     final static int TIMEOUT = 100;//ms
     
-    class Node {
-    	String T;
-    	Integer id, clk;
-    	Node(String T, Integer id, Integer clk) {
-    		this.T=T; this.id=id; this.clk=clk;
-    	}    	
-    }
-
     Integer ID, port;
-    Integer[] CLK;
-    Queue<Node> Q;
-
+    Integer[] CLK, Q;
     String[][] serversInfo;
     SeatingData seatsObj;
     ServerSocket serverSocket;
@@ -63,8 +53,11 @@ class TCPServer implements Runnable {
         this.serversInfo = info;
         this.ID = id;
         this.CLK = new int[info.length]; //init to 0 by default
-        this.Q = new LinkedList<String>();
         this.CLK[ID]++;
+        this.Q = new Integer[info.length];
+        for (i=0; i<info.length; i++) {
+        	Q[i]=Integer.MAX_VALUE;
+        }
     }
     
     public boolean synch (String addr, int port) {
@@ -79,7 +72,7 @@ class TCPServer implements Runnable {
 
             //ESTABLISHING CONNECTION TO SERVER PEER
             peerSckt.setSoTimeout(TIMEOUT);
-            peerOut.println("server_msg synch S "+ID.toString()+" "+CLK[ID].toString());
+            peerOut.println("server_msg synch "+ID.toString()+" "+CLK[ID].toString());
             answer = peerIn.readLine();
 
             clientSckt.close();
@@ -141,14 +134,13 @@ class TCPServer implements Runnable {
 class Handler implements Runnable {
 	
     Integer ID;
-    Integer[] CLK;
-    Queue<Node> Q;
+    Integer[] CLK, Q;
     String changeState; // either FALSE or [A|D]:seatNum:name
     String[][] serversInfo;
     SeatingData seatsObj;
     Socket sckt;
 
-    public Handler(Socket sckt, SeatingData seatsObj, String [][] info, Integer[] clk, Integer id, Queue q ) {
+    public Handler(Socket sckt, SeatingData seatsObj, String [][] info, Integer[] clk, Integer id, Integer[] q ) {
         this.seatsObj = seatsObj;
         this.serversInfo = info;
         this.ID = id;
@@ -158,8 +150,7 @@ class Handler implements Runnable {
     }
 	
 	void run() {
-	    String TAG = 'W';
-
+		
 	    try {
 	        //get streams
 	        BufferedReader in = new BufferedReader(new InputStreamReader(Sckt.getInputStream()));
@@ -172,14 +163,10 @@ class Handler implements Runnable {
 	      
 	        //CLIENT REQ
 	        if (tokens[0].equals("client_req")) {
-	          
 	            out.println("ACK\n");
 	            received = in.readLine();
 	            System.out.println("Client: " + received);
-
-	            tokens = received.split(" ");
-	    		if (tokens[0].equals("search")) { TAG='R'; }
-	            answerClient(tokens, TAG); 
+	            answerClient(received); 
 	        }
 	        //SERVER PEER MSG
 	        else if (tokens[0].equals("server_msg")){
@@ -195,53 +182,85 @@ class Handler implements Runnable {
 	    }
 	}
 	
-	synchronized void answerClient(String[] tokens, String TAG) {
+	synchronized void answerClient(String received) {
         //LAMPORT'S REQ_CS
         CLK[ID]++;
-        Q.add(new Node(TAG, ID, CLK[ID]));
-        broadcast("reqcs", TAG, ID, CLK[ID]);
+        Q[ID] = CLK[ID];
+        broadcast("reqcs", ID, CLK[ID]);
       
-        while (!Q.okCS(ID)) {;}
+        while (!okCS()) {Thread.yield();} //WAIT
         //ENTER CS
         String returnMessage = seatMaster(received);
         out.println(returnMessage + "\n");
 
         //LAMPORT'S REL_CS -- synch others if write
-        //use TAG to synch [A|D]:seatNum:name
-        if (!TAG.equals('R') && !changeState.equals("FALSE")) {
-            TAG = changeState;
-        }
-        broadcast("relcs", TAG, ID, CLK[ID]);
-        Q.clear();	
+        //use changeState to synch [A|D]:seatNum:name (if not FALSE)
+        Q[ID] = Integer.MAX_VALUE;	
+        broadcast("relcs#"+changeState, ID, CLK[ID]);
 	}
 	
 	synchronized void answerPeer(String[] tokens) {
-        //CLK[rid] = (CLK[rid] >= rclk) ? CLK[rid] : rclk;
-        //CLK[ID]  = (CLK[ID] >= rclk)  ? CLK[ID] : rclk;
-        CLK[rid] = Integer.max(CLK[rid], rclk);
-        CLK[ID] = Integer.max(CLK[ID], rclk);
-        CLK[ID]++;
-        
-	    String msg  = tokens[1]; //MSG
-	    String TAG  = tokens[2]; //TAG
-	    Integer rid  = Integer.parseInt(tokens[3]); //RID
-	    Integer rclk = Integer.parseInt(tokens[4]); //RCLK_VALUE
+	    String msg   = tokens[1]; //MSG
+	    Integer rid  = Integer.parseInt(tokens[2]); //RID
+	    Integer rclk = Integer.parseInt(tokens[3]); //RCLK_VALUE
+	    
+	    CLK[rid] = Integer.max(CLK[rid], rclk);
+        CLK[ID] = Integer.max(CLK[ID], rclk) + 1;
                       
         //SYNCH ANOTHER PEER
         if (tokens[1].equals("synch")) { 
             String rStr ="::"+CLK[rid].toString();
             out.println(seatingData.toString()+rStr); //update peer data + clk
         }
-        //LAMPORTS RESPONSES
+        //REQ_CS
         else if (tokens[1].equals("reqcs")) { 
-            Q.add(TAG, rid, CLK[rid])
-            send("ACK", rid, CLK[rid]);
+            Q[rid] = CLK[rid];
+            sendMsg("ACK", rid, ID, CLK[ID]);
         }
-        else if (tokens[1].equals("relcs")) { 
-            Q.remove(rid);
+        //REL_CS -- SYNCH USING INFO RECEIVED
+        else if (tokens[1].contains("relcs")) { //relcs#***** (see above)
+            Q[rid]=Integer.MAX_VALUE;
+            String[] data = answer.split("#");
+            if (!data[1].equals("FALSE")) { //changedState
+            	String[] entry = answer.split(":");
+            	if (entry[0].equals("A")) {
+            		seatsObj.bookSeat(entry[0], entry[1]);
+            	}
+            	else if (entry[0].equals("D")) {
+            		seatsObj.delete(entry[1]);
+            	}
+            }
         }
 	}
-	 
+	
+	boolean okCS() {
+        for (x=0; x<serversInfo.length; x++) {
+        	 if ((q[ID] > q[i]) || ((q[ID] == q[i]) && (ID > x))) {
+        		 return false;
+        	 }
+        	 if ((q[ID] > CLK[i]) || ((q[ID] == v[i]) && (ID > x))) {
+        		 return false;
+        	 }        	 
+        } 
+		return true;
+	}
+	
+	void broadcast(String msg, Integer id, Integer clk) {
+        for (int x = 0; x < serversInfo.length; x++) {
+            if (x==id) { continue; }
+            sendMsg(msg, x, id, clk);
+        }     
+	}
+	
+	void sendMsg(String msg, Integer dest_id, Integer source_id, Integer source_clk) {
+		
+		String fullMsg = msg+" "+source_id.toString()+" "+source_clk.toString();
+		String addr = serversInfo[dest_id][0];
+		Integer port = Integer.parseInt(serversInfo[dest_id][1]);
+		
+		new Thread(new sendMsg(addr, port, fullMsg)).start();
+	}
+	
 	 
     public String seatMaster (String received) {
 
@@ -301,6 +320,42 @@ class Handler implements Runnable {
         }
         return returnMessage;
     }
+	
+}
+
+
+class SendMsg implements Runnable {
+    final static int TIMEOUT = 100;//ms
+    String msg, addr;
+    Integer port;
+    
+	sendMsg(String addr, Integer port, String msg) {
+		this.addr=addr; this.port=port; this.msg=msg;
+	}
+	
+	void run() {
+		
+        try {
+            Socket peerSckt = new Socket(InetAddress.getByName(addr), port);
+            PrintWriter peerOut = new PrintWriter(peerSckt.getOutputStream(), true);
+            BufferedReader peerIn =
+                    new BufferedReader(new InputStreamReader(peerSckt.getInputStream()));
+
+            //ESTABLISHING CONNECTION TO SERVER PEER
+            peerSckt.setSoTimeout(TIMEOUT);
+            peerOut.println("server_msg "+msg);
+            answer = peerIn.readLine();
+            clientSckt.close();
+        }
+        catch (SocketTimeoutException t) {
+            return false;
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+
+	}
+	
 	
 }
 
