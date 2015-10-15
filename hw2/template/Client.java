@@ -103,7 +103,7 @@ public class Client {
                 answer = inFromServer.readLine();
 
                 //SERVER IS ALIVE ... SEND REQ
-                clientSocket.setSoTimeout(0);
+                //clientSocket.setSoTimeout(0);
                 outToServer.println(cmd);
                 answer = inFromServer.readLine();
 
@@ -117,7 +117,7 @@ public class Client {
                 e.printStackTrace();
             }
 
-            break; //IF I GET TO HERE I'M GOOD
+            break; //IF I GET HERE I'M GOOD
         }
 
         return answer+"\n";
