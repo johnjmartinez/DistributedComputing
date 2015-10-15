@@ -29,7 +29,7 @@ public class Server {
 
         //Start server listening, including seating object
         TCPServer myTCP = new TCPServer(serversInfo, myID, seatsObj);
-        myTCP.start();
+        new Thread(myTCP).start();
     }
 
 }
@@ -52,10 +52,10 @@ class TCPServer implements Runnable {
         this.port = Integer.parseInt(info[id][1]);
         this.serversInfo = info;
         this.ID = id;
-        this.CLK = new int[info.length]; //init to 0 by default
+        this.CLK = new Integer[info.length]; //init to 0 by default
         this.CLK[ID]++;
         this.Q = new Integer[info.length];
-        for (i=0; i<info.length; i++) {
+        for (int i=0; i<info.length; i++) {
         	Q[i]=Integer.MAX_VALUE;
         }
     }
@@ -75,7 +75,7 @@ class TCPServer implements Runnable {
             peerOut.println("server_msg synch "+ID.toString()+" "+CLK[ID].toString());
             answer = peerIn.readLine();
 
-            clientSckt.close();
+            peerSckt.close();
         }
         catch (SocketTimeoutException t) {
             return false;
@@ -85,12 +85,12 @@ class TCPServer implements Runnable {
         }
 
         String[] data = answer.split("::");
-        CLK[ID] = Integer.max(CLK[ID], Integer.parseInt(data[1]);
+        CLK[ID] = Integer.max(CLK[ID], Integer.parseInt(data[1]));
         
-        String[] tokens = data[0].split(" ")
+        String[] tokens = data[0].split(" ");
         for (int i=0; i < tokens.length; i++) {
-            if (token[i].equals("")) { continue; }
-            String[] entry = token[i].split("=");
+            if (tokens[i].equals("")) { continue; }
+            String[] entry = tokens[i].split("=");
             seatsObj.bookSeat(entry[0], entry[1]);
         }
 
@@ -98,11 +98,11 @@ class TCPServer implements Runnable {
     }
     
     @Override
-    void run() {
+    public void run() {
     	
     	//SYNCH FIRST
         for (int i = 0; i < serversInfo.length; i++) {
-            if (i==id) { continue; }
+            if (i==ID) { continue; }
             else {
                 if (synch(serversInfo[i][0], Integer.parseInt(serversInfo[i][1]))) {
                     break;
@@ -139,6 +139,7 @@ class Handler implements Runnable {
     String[][] serversInfo;
     SeatingData seatsObj;
     Socket sckt;
+    PrintWriter out = null;
 
     public Handler(Socket sckt, SeatingData seatsObj, String [][] info, Integer[] clk, Integer id, Integer[] q ) {
         this.seatsObj = seatsObj;
@@ -149,12 +150,13 @@ class Handler implements Runnable {
         this.sckt = sckt;
     }
 	
-	void run() {
+    @Override
+	public void run() {
 		
 	    try {
 	        //get streams
-	        BufferedReader in = new BufferedReader(new InputStreamReader(Sckt.getInputStream()));
-	        PrintWriter out = new PrintWriter(Sckt.getOutputStream(), true);
+	        BufferedReader in = new BufferedReader(new InputStreamReader(sckt.getInputStream()));
+	        out = new PrintWriter(sckt.getOutputStream(), true);
 
 	        //get request and tokenize
 	        String received = in.readLine();
@@ -175,7 +177,7 @@ class Handler implements Runnable {
 	        //CLOSE ALL STREAMS AND SOCKETS
 	        out.close();
 	        in.close();
-	        clientSckt.close();
+	        sckt.close();
 	    }
 	    catch (Exception e) {
 	        e.printStackTrace();
@@ -210,7 +212,7 @@ class Handler implements Runnable {
         //SYNCH ANOTHER PEER
         if (tokens[1].equals("synch")) { 
             String rStr ="::"+CLK[rid].toString();
-            out.println(seatingData.toString()+rStr); //update peer data + clk
+            out.println(seatsObj.toString()+rStr); //update peer data + clk
         }
         //REQ_CS
         else if (tokens[1].equals("reqcs")) { 
@@ -220,9 +222,9 @@ class Handler implements Runnable {
         //REL_CS -- SYNCH USING INFO RECEIVED
         else if (tokens[1].contains("relcs")) { //relcs#***** (see above)
             Q[rid]=Integer.MAX_VALUE;
-            String[] data = answer.split("#");
+            String[] data = tokens[1].split("#");
             if (!data[1].equals("FALSE")) { //changedState
-            	String[] entry = answer.split(":");
+            	String[] entry = data[1].split(":");
             	if (entry[0].equals("A")) {
             		seatsObj.bookSeat(entry[0], entry[1]);
             	}
@@ -234,11 +236,11 @@ class Handler implements Runnable {
 	}
 	
 	boolean okCS() {
-        for (x=0; x<serversInfo.length; x++) {
-        	 if ((q[ID] > q[i]) || ((q[ID] == q[i]) && (ID > x))) {
+        for (int x=0; x<serversInfo.length; x++) {
+        	 if ((Q[ID] > Q[x]) || ((Q[ID] == Q[x]) && (ID > x))) {
         		 return false;
         	 }
-        	 if ((q[ID] > CLK[i]) || ((q[ID] == v[i]) && (ID > x))) {
+        	 if ((Q[ID] > CLK[x]) || ((Q[ID] == CLK[x]) && (ID > x))) {
         		 return false;
         	 }        	 
         } 
@@ -258,7 +260,7 @@ class Handler implements Runnable {
 		String addr = serversInfo[dest_id][0];
 		Integer port = Integer.parseInt(serversInfo[dest_id][1]);
 		
-		new Thread(new sendMsg(addr, port, fullMsg)).start();
+		new Thread(new SendMsg(addr, port, fullMsg)).start();
 	}
 	
 	 
@@ -272,18 +274,18 @@ class Handler implements Runnable {
         changeState = "FALSE";
 
         if (tokens[0].equals("reserve")) {
-            commandReturn = seatingData.reserve(tokens[1]);
+            commandReturn = seatsObj.reserve(tokens[1]);
             if (commandReturn == null) {
                 returnMessage = "Seat already booked against the name provided";
             }
             else {
                 returnMessage = "Seat assigned to " + tokens[1] + " is " 
                 		+ Integer.toString(commandReturn);
-                changeState = "A:"+Integer.toString(commandReturn)+":"tokens[1];
+                changeState = "A:"+Integer.toString(commandReturn)+":"+tokens[1];
             }
         }
         else if (tokens[0].equals("bookSeat")) {
-            commandReturn = seatingData.bookSeat(tokens[1], tokens[2]);
+            commandReturn = seatsObj.bookSeat(tokens[1], tokens[2]);
             if (commandReturn == null) {
                 returnMessage = tokens[2] + " is not available";
             }
@@ -293,11 +295,11 @@ class Handler implements Runnable {
             else { //Seat assigned to <name> is <seat-number>
                 returnMessage = "Seat assigned to " + tokens[1] + " is "
                         + Integer.toString(commandReturn);
-                changeState = "A:"+Integer.toString(commandReturn)+":"tokens[1];
+                changeState = "A:"+Integer.toString(commandReturn)+":"+tokens[1];
             }
         }
         else if (tokens[0].equals("search")) {
-            commandReturn = seatingData.search(tokens[1]);
+            commandReturn = seatsObj.search(tokens[1]);
             if (commandReturn == null) {
                 returnMessage = "No reservation found for " + tokens[1];
             }
@@ -306,13 +308,13 @@ class Handler implements Runnable {
             }
         }
         else if (tokens[0].equals("delete")) {
-            commandReturn = seatingData.delete(tokens[1]);
+            commandReturn = seatsObj.delete(tokens[1]);
             if (commandReturn == null) {
                 returnMessage = "No reservation found for " + tokens[1];                
             }
             else {
                 returnMessage = Integer.toString(commandReturn);
-                changeState = "D:"+Integer.toString(commandReturn)+":"tokens[1];
+                changeState = "D:"+Integer.toString(commandReturn)+":"+tokens[1];
             }
         }
         else  {
@@ -326,14 +328,15 @@ class Handler implements Runnable {
 
 class SendMsg implements Runnable {
     final static int TIMEOUT = 100;//ms
-    String msg, addr;
+    String msg, addr, answer;
     Integer port;
     
-	sendMsg(String addr, Integer port, String msg) {
+	public SendMsg(String addr, Integer port, String msg) {
 		this.addr=addr; this.port=port; this.msg=msg;
 	}
 	
-	void run() {
+	@Override
+	public void run() {
 		
         try {
             Socket peerSckt = new Socket(InetAddress.getByName(addr), port);
@@ -345,10 +348,10 @@ class SendMsg implements Runnable {
             peerSckt.setSoTimeout(TIMEOUT);
             peerOut.println("server_msg "+msg);
             answer = peerIn.readLine();
-            clientSckt.close();
+            peerSckt.close();
         }
         catch (SocketTimeoutException t) {
-            return false;
+            System.out.println("Server at "+addr+":"+port.toString()+" TIMEOUT!");
         }
         catch (Exception e) {
             e.printStackTrace();
