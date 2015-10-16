@@ -96,23 +96,25 @@ public class Client {
 
             currAddr = serversInfo[id][0];
             currPort = Integer.parseInt(serversInfo[id][1]);
-            System.out.println(serversInfo[id][0]+" "+serversInfo[id][1]);
+            //DEBUG System.out.println("\n"+serversInfo[id][0]+" "+serversInfo[id][1]);
 
             try {
                 clientSocket = new Socket(InetAddress.getByName(currAddr), currPort);
+                clientSocket.setSoTimeout(TIMEOUT);
                 PrintWriter outToServer = new PrintWriter(clientSocket.getOutputStream(), true);
                 BufferedReader inFromServer =
                         new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 
                 //ESTABLISHING CONNECTION TO SERVER
                 //TODO: check answer==ACK
-                clientSocket.setSoTimeout(TIMEOUT);
                 outToServer.println("client_req");
+                while(!inFromServer.ready()) {;}
                 answer = inFromServer.readLine();
 
                 //SERVER IS ALIVE ... SEND REQ
                 //clientSocket.setSoTimeout(0);
                 outToServer.println(cmd);
+                while(!inFromServer.ready()) {;}
                 answer = inFromServer.readLine();
 
                 clientSocket.close();
@@ -123,6 +125,7 @@ public class Client {
             }
             catch (Exception e) {
                 e.printStackTrace();
+                continue;
             }
 
             break; //IF I GET HERE I'M GOOD

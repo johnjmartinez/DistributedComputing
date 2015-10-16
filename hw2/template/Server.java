@@ -16,13 +16,11 @@ public class Server {
         //PER ASSIGNMENT -- "The first line of the input to a server contains three natural numbers separated by a single whitespace"
         String cmd = sc.nextLine();
         String[] tokens = cmd.split(" ");
-        int myID = Integer.parseInt(tokens[0]);     // NOT WORKING = sc.nextInt();
-        int numServer = Integer.parseInt(tokens[1]);// NOT WORKING = sc.nextInt();
-        int numSeat = Integer.parseInt(tokens[2]);  // NOT WORKING = sc.nextInt();
+        int myID = Integer.parseInt(tokens[0])-1;     // NOT WORKING = sc.nextInt();
+        int numServer = Integer.parseInt(tokens[1]);  // NOT WORKING = sc.nextInt();
+        int numSeat = Integer.parseInt(tokens[2]);    // NOT WORKING = sc.nextInt();
 
         String[][] serversInfo = new String[numServer][2];
-        SeatingData seatsObj = new SeatingData(numSeat);
-
 
         //parse inputs to get the ips and ports of server
         for (int i = 0; i < numServer; i++) {
@@ -37,6 +35,7 @@ public class Server {
         sc.close();
 
         //Start server listening, including seating object
+        SeatingData seatsObj = new SeatingData(numSeat);
         TCPServer myTCP = new TCPServer(serversInfo, myID, seatsObj);
         new Thread(myTCP).start();
     }
@@ -53,8 +52,9 @@ class TCPServer implements Runnable {
     Integer[] CLK, Q;
     String[][] serversInfo;
     SeatingData seatsObj;
-    ServerSocket serverSocket;
-    Socket reqSckt;
+    ServerSocket serverSocket = null;
+    Socket reqSckt = null;
+    Thread runningThread = null;
 
     public TCPServer(String [][] info, int id, SeatingData seatsObj) {
         this.seatsObj = seatsObj;
@@ -83,6 +83,8 @@ class TCPServer implements Runnable {
             //ESTABLISHING CONNECTION TO SERVER PEER
             peerSckt.setSoTimeout(TIMEOUT);
             peerOut.println("server_msg synch "+ID.toString()+" "+CLK[ID].toString());
+
+            while(!peerIn.ready()) {;}
             answer = peerIn.readLine();
 
             peerSckt.close();
@@ -109,6 +111,10 @@ class TCPServer implements Runnable {
     
     @Override
     public void run() {
+
+        synchronized(this) {
+            this.runningThread = Thread.currentThread();
+        }
     	
     	//SYNCH FIRST
         System.out.println("Synching ...");
@@ -171,6 +177,7 @@ class Handler implements Runnable {
 	        out = new PrintWriter(sckt.getOutputStream(), true);
 
 	        //get request and tokenize
+            while(!in.ready()) {;}
 	        String received = in.readLine();
 	        String[] tokens = received.split(" "); 
             System.out.println("Server: "+received);
@@ -178,6 +185,7 @@ class Handler implements Runnable {
 	        //CLIENT REQ
 	        if (tokens[0].equals("client_req")) {
 	            out.println("ACK\n");
+                while(!in.ready()) {;}
 	            received = in.readLine();
 	            System.out.println("Client: " + received);
 	            answerClient(received); 
@@ -342,6 +350,7 @@ class SendMsg implements Runnable {
     final static int TIMEOUT = 100;//ms
     String msg, addr, answer;
     Integer port;
+    Thread runningThread = null;
     
 	public SendMsg(String addr, Integer port, String msg) {
 		this.addr=addr; this.port=port; this.msg=msg;
@@ -349,17 +358,24 @@ class SendMsg implements Runnable {
 	
 	@Override
 	public void run() {
-		
+
+        synchronized(this) {
+            this.runningThread = Thread.currentThread();
+        }
+
         try {
             Socket peerSckt = new Socket(InetAddress.getByName(addr), port);
+            peerSckt.setSoTimeout(TIMEOUT);
+
             PrintWriter peerOut = new PrintWriter(peerSckt.getOutputStream(), true);
             BufferedReader peerIn =
                     new BufferedReader(new InputStreamReader(peerSckt.getInputStream()));
 
             //ESTABLISHING CONNECTION TO SERVER PEER
-            peerSckt.setSoTimeout(TIMEOUT);
             peerOut.println("server_msg "+msg);
-            //answer = peerIn.readLine();
+
+            while(!peerIn.ready()) {;}
+            answer = peerIn.readLine();
             peerSckt.close();
         }
         catch (SocketTimeoutException t) {
@@ -367,6 +383,7 @@ class SendMsg implements Runnable {
         }
         catch (Exception e) {
             e.printStackTrace();
+            System.out.println("Server at "+addr+":"+port.toString()+" ERROR!");
         }
 
 	}
