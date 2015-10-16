@@ -1,5 +1,6 @@
 import java.io.*;
 import java.lang.Integer;
+import java.lang.System;
 import java.net.*;
 import java.util.*;
 import java.lang.*;
@@ -86,7 +87,7 @@ class TCPServer implements Runnable {
 
             while(!peerIn.ready()) {;}
             answer = peerIn.readLine();
-
+            System.out.println(" "+answer);
             peerSckt.close();
         }
         catch (SocketTimeoutException t) {
@@ -156,8 +157,7 @@ class Handler implements Runnable {
     String changeState; // either FALSE or [A|D]:seatNum:name
     String[][] serversInfo;
     SeatingData seatsObj;
-    Socket sckt;
-    PrintWriter out = null;
+    private Socket sckt;
 
     public Handler(Socket sckt, SeatingData seatsObj, String [][] info, Integer[] clk, Integer id, Integer[] q ) {
         this.seatsObj = seatsObj;
@@ -169,12 +169,12 @@ class Handler implements Runnable {
     }
 	
     @Override
-	public void run() {
+    public void run() {
 		
 	    try {
 	        //get streams
 	        BufferedReader in = new BufferedReader(new InputStreamReader(sckt.getInputStream()));
-	        out = new PrintWriter(sckt.getOutputStream(), true);
+            PrintWriter out = new PrintWriter(sckt.getOutputStream(), true);
 
 	        //get request and tokenize
             while(!in.ready()) {;}
@@ -188,11 +188,20 @@ class Handler implements Runnable {
                 while(!in.ready()) {;}
 	            received = in.readLine();
 	            System.out.println("Client: " + received);
-	            answerClient(received); 
+
+	            reqCS(received);
+
+                while (!okCS()) {Thread.yield();} //WAIT
+                //ENTER CS
+                String returnMessage = seatMaster(received);
+                System.out.println("Server: "+returnMessage);
+                out.println("~ " + returnMessage + "\n");
+
+                relCS();
 	        }
 	        //SERVER PEER MSG
 	        else if (tokens[0].equals("server_msg")){
-	        	answerPeer(tokens);
+	        	answerPeer(tokens, out);
 	        }
 	        //CLOSE ALL STREAMS AND SOCKETS
 	        out.close();
@@ -204,24 +213,33 @@ class Handler implements Runnable {
 	    }
 	}
 	
-	synchronized void answerClient(String received) {
+	synchronized void reqCS(String received) {
         //LAMPORT'S REQ_CS
         CLK[ID]++;
         Q[ID] = CLK[ID];
         broadcast("reqcs", ID, CLK[ID]);
-      
-        while (!okCS()) {Thread.yield();} //WAIT
-        //ENTER CS
-        String returnMessage = seatMaster(received);
-        out.println(returnMessage + "\n");
+    }
 
+    boolean okCS() {
+        for (int x=0; x<serversInfo.length; x++) {
+            if ((Q[ID] > Q[x]) || ((Q[ID] == Q[x]) && (ID > x))) {
+                return false;
+            }
+            if ((Q[ID] > CLK[x]) || ((Q[ID] == CLK[x]) && (ID > x))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    synchronized void relCS() {
         //LAMPORT'S REL_CS -- synch others if write
         //use changeState to synch [A|D]:seatNum:name (if not FALSE)
         Q[ID] = Integer.MAX_VALUE;	
         broadcast("relcs#"+changeState, ID, CLK[ID]);
 	}
 	
-	synchronized void answerPeer(String[] tokens) {
+	synchronized void answerPeer(String[] tokens, PrintWriter resp) {
 	    String msg   = tokens[1]; //MSG
 	    Integer rid  = Integer.parseInt(tokens[2]); //RID
 	    Integer rclk = Integer.parseInt(tokens[3]); //RCLK_VALUE
@@ -232,7 +250,7 @@ class Handler implements Runnable {
         //SYNCH ANOTHER PEER
         if (msg.equals("synch")) {
             String rStr ="::"+CLK[rid].toString();
-            out.println(seatsObj.toString()+rStr); //update peer data + clk
+            resp.println(seatsObj.toString()+rStr); //update peer data + clk
         }
         //REQ_CS
         else if (msg.equals("reqcs")) {
@@ -246,7 +264,7 @@ class Handler implements Runnable {
             if (!data[1].equals("FALSE")) { //changedState
             	String[] entry = data[1].split(":");
             	if (entry[0].equals("A")) {
-            		seatsObj.bookSeat(entry[0], entry[1]);
+            		seatsObj.bookSeat(entry[2], entry[1]);
             	}
             	else if (entry[0].equals("D")) {
             		seatsObj.delete(entry[1]);
@@ -254,19 +272,7 @@ class Handler implements Runnable {
             }
         }
 	}
-	
-	boolean okCS() {
-        for (int x=0; x<serversInfo.length; x++) {
-        	 if ((Q[ID] > Q[x]) || ((Q[ID] == Q[x]) && (ID > x))) {
-        		 return false;
-        	 }
-        	 if ((Q[ID] > CLK[x]) || ((Q[ID] == CLK[x]) && (ID > x))) {
-        		 return false;
-        	 }        	 
-        } 
-		return true;
-	}
-	
+
 	void broadcast(String msg, Integer id, Integer clk) {
         for (int x = 0; x < serversInfo.length; x++) {
             if (x==id) { continue; }
@@ -282,8 +288,7 @@ class Handler implements Runnable {
 		
 		new Thread(new SendMsg(addr, port, fullMsg)).start();
 	}
-	
-	 
+
     public String seatMaster (String received) {
 
         String[] tokens = received.split(" ");
@@ -497,11 +502,10 @@ class SeatingData {
 
     synchronized public String toString() {
         String out = "";
-        List<Entry> entryList = new ArrayList<Entry>(reservationSystem.entrySet());
-        for (Entry temp : entryList) {
-            out += temp.toString();
-            out += " ";
+        for (Map.Entry<String, Integer> entry : reservationSystem.entrySet()) {
+            out += entry.getKey() + "=" + entry.getValue()+" ";
         }
         return out;
     }
 }
+

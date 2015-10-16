@@ -114,7 +114,7 @@ public class Client {
                 //SERVER IS ALIVE ... SEND REQ
                 //clientSocket.setSoTimeout(0);
                 outToServer.println(cmd);
-                while(!inFromServer.ready()) {;}
+                //while(!inFromServer.ready()) {;}
                 answer = inFromServer.readLine();
 
                 clientSocket.close();
