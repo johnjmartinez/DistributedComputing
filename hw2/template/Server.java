@@ -1,18 +1,17 @@
 import java.io.*;
-import java.lang.Integer;
-import java.lang.System;
 import java.net.*;
 import java.util.*;
 import java.lang.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 
 public class Server {
 
     public static void main (String[] args) {
 
         Scanner sc = new Scanner(System.in);
-
 
         //PER ASSIGNMENT -- "The first line of the input to a server contains three natural numbers separated by a single whitespace"
         String cmd = sc.nextLine();
@@ -56,6 +55,7 @@ class TCPServer implements Runnable {
     ServerSocket serverSocket = null;
     Socket reqSckt = null;
     Thread runningThread = null;
+    ExecutorService pool;
 
     public TCPServer(String [][] info, int id, SeatingData seatsObj) {
         this.seatsObj = seatsObj;
@@ -69,8 +69,9 @@ class TCPServer implements Runnable {
             CLK[i]=0;
         }
         CLK[ID]++;
+        pool = Executors.newFixedThreadPool(5);
     }
-    
+
     public boolean synch (String addr, int port) {
 
         String answer = "";
@@ -116,7 +117,8 @@ class TCPServer implements Runnable {
         synchronized(this) {
             this.runningThread = Thread.currentThread();
         }
-    	
+
+
     	//SYNCH FIRST
         System.out.println("Synching ...");
         for (int i = 0; i < serversInfo.length; i++) {
@@ -140,10 +142,11 @@ class TCPServer implements Runnable {
             try {
                 //Accept connection, spawn new thread
                 this.reqSckt = this.serverSocket.accept();
-                new Thread(new Handler(reqSckt, seatsObj, serversInfo, CLK, ID, Q)).start();
+                pool.execute(new Handler(reqSckt, seatsObj, serversInfo, CLK, ID, Q));
+                //new Thread(new Handler(reqSckt, seatsObj, serversInfo, CLK, ID, Q)).start();
             }
             catch (Exception e) {
-            	
+                pool.shutdown();
             }
         }
     }
@@ -157,7 +160,7 @@ class Handler implements Runnable {
     String changeState; // either FALSE or [A|D]:seatNum:name
     String[][] serversInfo;
     SeatingData seatsObj;
-    private Socket sckt;
+    private final Socket sckt;
 
     public Handler(Socket sckt, SeatingData seatsObj, String [][] info, Integer[] clk, Integer id, Integer[] q ) {
         this.seatsObj = seatsObj;
@@ -185,17 +188,19 @@ class Handler implements Runnable {
 	        //CLIENT REQ
 	        if (tokens[0].equals("client_req")) {
 	            out.println("ACK\n");
+                out.flush();
                 while(!in.ready()) {;}
 	            received = in.readLine();
 	            System.out.println("Client: " + received);
 
-	            reqCS(received);
+	            reqCS();
 
                 while (!okCS()) {Thread.yield();} //WAIT
                 //ENTER CS
                 String returnMessage = seatMaster(received);
                 System.out.println("Server: "+returnMessage);
                 out.println("~ " + returnMessage + "\n");
+                out.flush();
 
                 relCS();
 	        }
@@ -204,16 +209,15 @@ class Handler implements Runnable {
 	        	answerPeer(tokens, out);
 	        }
 	        //CLOSE ALL STREAMS AND SOCKETS
-	        out.close();
-	        in.close();
 	        sckt.close();
 	    }
 	    catch (Exception e) {
 	        e.printStackTrace();
 	    }
+
 	}
 	
-	synchronized void reqCS(String received) {
+	synchronized void reqCS() {
         //LAMPORT'S REQ_CS
         CLK[ID]++;
         Q[ID] = CLK[ID];
@@ -377,8 +381,8 @@ class SendMsg implements Runnable {
                     new BufferedReader(new InputStreamReader(peerSckt.getInputStream()));
 
             //ESTABLISHING CONNECTION TO SERVER PEER
-            peerOut.println("server_msg "+msg);
-
+            peerOut.println("server_msg " + msg);
+            peerOut.flush();
             while(!peerIn.ready()) {;}
             answer = peerIn.readLine();
             peerSckt.close();
@@ -387,8 +391,8 @@ class SendMsg implements Runnable {
             System.out.println("Server at "+addr+":"+port.toString()+" TIMEOUT!");
         }
         catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("Server at "+addr+":"+port.toString()+" ERROR!");
+            //e.printStackTrace();
+            System.out.println("Server at "+addr+":"+port.toString()+" ERROR:\t"+e);
         }
 
 	}
