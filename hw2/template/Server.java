@@ -1,4 +1,5 @@
 import java.io.*;
+import java.lang.Integer;
 import java.net.*;
 import java.util.*;
 import java.lang.*;
@@ -10,22 +11,30 @@ public class Server {
     public static void main (String[] args) {
 
         Scanner sc = new Scanner(System.in);
-        int myID = sc.nextInt();
-        int numServer = sc.nextInt();
-        int numSeat = sc.nextInt();
+
+
+        //PER ASSIGNMENT -- "The first line of the input to a server contains three natural numbers separated by a single whitespace"
+        String cmd = sc.nextLine();
+        String[] tokens = cmd.split(" ");
+        int myID = Integer.parseInt(tokens[0]);     // NOT WORKING = sc.nextInt();
+        int numServer = Integer.parseInt(tokens[1]);// NOT WORKING = sc.nextInt();
+        int numSeat = Integer.parseInt(tokens[2]);  // NOT WORKING = sc.nextInt();
 
         String[][] serversInfo = new String[numServer][2];
         SeatingData seatsObj = new SeatingData(numSeat);
 
+
         //parse inputs to get the ips and ports of server
         for (int i = 0; i < numServer; i++) {
-
-            String cmd = sc.nextLine();
-            String[] tokens = cmd.split(":");
+            cmd = sc.nextLine();
+            tokens = cmd.split(":");
 
             serversInfo[i][0] = tokens[0];
             serversInfo[i][1] = tokens[1];
         }
+
+        System.out.println("\nStarting ...");
+        sc.close();
 
         //Start server listening, including seating object
         TCPServer myTCP = new TCPServer(serversInfo, myID, seatsObj);
@@ -52,12 +61,13 @@ class TCPServer implements Runnable {
         this.port = Integer.parseInt(info[id][1]);
         this.serversInfo = info;
         this.ID = id;
-        this.CLK = new Integer[info.length]; //init to 0 by default
-        this.CLK[ID]++;
+        this.CLK = new Integer[info.length];
         this.Q = new Integer[info.length];
         for (int i=0; i<info.length; i++) {
         	Q[i]=Integer.MAX_VALUE;
+            CLK[i]=0;
         }
+        CLK[ID]++;
     }
     
     public boolean synch (String addr, int port) {
@@ -81,7 +91,7 @@ class TCPServer implements Runnable {
             return false;
         }
         catch (Exception e) {
-            e.printStackTrace();
+            return false;
         }
 
         String[] data = answer.split("::");
@@ -101,6 +111,7 @@ class TCPServer implements Runnable {
     public void run() {
     	
     	//SYNCH FIRST
+        System.out.println("Synching ...");
         for (int i = 0; i < serversInfo.length; i++) {
             if (i==ID) { continue; }
             else {
@@ -110,6 +121,7 @@ class TCPServer implements Runnable {
             }
         }
         //START SERVER SOCKET
+        System.out.println("Listening ...\n");
         try {
             this.serverSocket = new ServerSocket(this.port);
         }
@@ -210,19 +222,19 @@ class Handler implements Runnable {
         CLK[ID] = Integer.max(CLK[ID], rclk) + 1;
                       
         //SYNCH ANOTHER PEER
-        if (tokens[1].equals("synch")) { 
+        if (msg.equals("synch")) {
             String rStr ="::"+CLK[rid].toString();
             out.println(seatsObj.toString()+rStr); //update peer data + clk
         }
         //REQ_CS
-        else if (tokens[1].equals("reqcs")) { 
+        else if (msg.equals("reqcs")) {
             Q[rid] = CLK[rid];
             sendMsg("ACK", rid, ID, CLK[ID]);
         }
         //REL_CS -- SYNCH USING INFO RECEIVED
-        else if (tokens[1].contains("relcs")) { //relcs#***** (see above)
+        else if (msg.contains("relcs")) { //relcs#***** (see above)
             Q[rid]=Integer.MAX_VALUE;
-            String[] data = tokens[1].split("#");
+            String[] data = msg.split("#");
             if (!data[1].equals("FALSE")) { //changedState
             	String[] entry = data[1].split(":");
             	if (entry[0].equals("A")) {
@@ -347,7 +359,7 @@ class SendMsg implements Runnable {
             //ESTABLISHING CONNECTION TO SERVER PEER
             peerSckt.setSoTimeout(TIMEOUT);
             peerOut.println("server_msg "+msg);
-            answer = peerIn.readLine();
+            //answer = peerIn.readLine();
             peerSckt.close();
         }
         catch (SocketTimeoutException t) {
