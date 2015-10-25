@@ -29,11 +29,11 @@ import org.apache.hadoop.mapred.Reporter;
 public class InvertedIndexer {
 
 
-  // The mapper class, you should modify T1, T2, T3, T4 to your desired
-  // types
+  // The mapper class, you should modify T1, T2, T3, T4 to your desired types
+ // i.e  public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT>
   public static class InvertedIndexMapper extends MapReduceBase
       implements Mapper<T1, T2, T3, T4> {
-
+//Mapper<LongWritable, Text, Text, LongWritable>
 
     public void map(T1 key, T2 val,
         OutputCollector<T3, T4> output, Reporter reporter)
@@ -59,7 +59,29 @@ public class InvertedIndexer {
   /**
    * The actual main() method for our program; this is the
    * "driver" for the MapReduce job.
+   *
+   * COUNTING INDEXER
+   - identify files
+   - calculate occurrences of every word that appear in given set of files above
+   - convert every character into lower-case
+   - mask non-alphabetic characters by white-space
+   - sorted on occurrence-frequency
+   - print earlier chapter if tie
+
+   *IMPLEMENTATION
+   - Single-Node run, Hadoop 2.6.1
+
+   *output
+   word1
+   <file-name1, occurrence-frequency1>
+   <file-name2, occurrence-frequency2>
+   .
+   word2
+   <file-name3, occurrence-frequency3>
+   <file-name4, occurrence-frequency4>
+   .
    */
+
   public static void main(String[] args) {
     // TODO: configure the hadoop job and run the job
   }
