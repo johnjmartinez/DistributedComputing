@@ -29,35 +29,45 @@ import org.apache.hadoop.mapred.Reporter;
 
 public class InvertedIndexer {
 
-    // The mapper class, you should modify T1, T2, T3, T4 to your desired types
-    public static class InvertedIndexMapper extends MapReduceBase implements Mapper<T1, T2, T3, T4> {
-    //MAYBE Mapper<LongWritable, Text, Text, LongWritable>?
+    //NOTES:
+    //* Collector gets ouputs from map() and reduce() Fxs
+    //* Mapper called once per line from input files
+    //  - Tokenize line into words using space AFTER converting symbols to space
+    //  - Outputs: (key=word, value=file(:line_num_instances?))
+    //* Reducer collects all files per key
+    //  - Single output per key=word are sorted values by total_num_instances and chapter (filename)
+    //  - Value=file(:total_num_instances))
 
-        // TODO: MAYBE SIGNATURE = (key, "word chapter count")?
+
+    public static class InvertedIndexMapper extends MapReduceBase implements Mapper<Text, Text, Text, Text> {
+
         private Text word = new Text();
-        private LongWritable count = new LongWritable();
+        private Text val = new Text(); //file(:line_num_instances?)
 
-        public void map(T1 key, T2 val, OutputCollector<T3, T4> output, Reporter reporter)
-          throws IOException { //context is Outputcollector + Reporter????
-        // TODO: implement your map function
+        public void map(Text key, Text val, OutputCollector<Text, Text> output, Reporter reporter)
+          throws IOException {
+
+            //BASIC PLACEHODER
+            output.collect(word, val);
 
         }
     }
 
 
-    // The reducer class, you should modify T1, T2, T3, T4 to your desired types
-    public static class InvertedIndexReducer extends MapReduceBase
-      implements Reducer<T1, T2, T3, T4> {
+    public static class InvertedIndexReducer extends MapReduceBase implements Reducer<Text, Text, Text, T4> {
 
-        public void reduce(T1 key, Iterator<T2> values, OutputCollector<T3, T4> output, Reporter reporter)
-          throws IOException { //context is Outputcollector + Reporter????
-        // TODO: implement your reduce function
+        public void reduce(Text key, Iterator<Text> values, OutputCollector<Text, T4> output, Reporter reporter)
+          throws IOException { //NEED to define T4 ... Sorted ArrayList?? Convert to Text??
 
-            //SUM ocurrences of KEY word?
-            long sum = 0;
-            for (LongWritable val : values) {
-                sum += val.get();
+
+
+            //BASIC PLACEHODER
+            while (values.hasNext()) {
+                //Grab values.next()
+                //tokenize using : as delimeter
+                //Aggregate results in T4
             }
+            output.collect(key, T4 someStruct);
         }
     }
 
@@ -76,7 +86,7 @@ public class InvertedIndexer {
    *IMPLEMENTATION
    - Single-Node run, Hadoop 2.6.1
 
-   *output
+   *OUTPUT
    word1
    <file-name1, occurrence-frequency1>
    <file-name2, occurrence-frequency2>
@@ -88,33 +98,37 @@ public class InvertedIndexer {
    */
 
     public static void main(String[] args) {
-    // TODO: configure the hadoop job and run the job
         //CONFIGURATION
-        Configuration conf = new Configuration();
-        Job job = new Job(conf, "wordChapterCounter");
+        JobConf conf = new JobConf(InvertedIndexer.class);
+        conf.setJobName("wordChapterCounter");
+        conf.setMapperClass(InvertedIndexer.InvertedIndexMapper.class);
+        conf.setReducerClass(InvertedIndexer.InvertedIndexReducer.class);
 
-        //OR
+        conf.setInputPath(new Path(args[0]));
+        conf.setOutputPath(new Path(args[1]));
+
+        JobClient.runJob(conf);
+
+        //Configuration conf = new Configuration();
+        //Job job = new Job(conf, "wordChapterCounter");
+
         //Job job = new Job(getConf());
         //job.setJarByClass(getClass());
         //job.setJobName(getClass().getSimpleName());
-
-        job.setJarByClass(InvertedIndexer.class);
-        job.setMapperClass(InvertedIndexMapper.class);
-        job.setReducerClass(InvertedIndexReducer.class);
+        //job.setJarByClass(InvertedIndexer.class);
 
         //KEYS AND I/O SETUP --- NEED TO CHANGE THESE
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(Text.class);
-        job.setMapOutputKeyClass(Text.class);
-        job.setMapOutputValueClass(Text.class);
-        job.setInputFormatClass(KeyValueTextInputFormat.class);
-        job.setOutputFormatClass(TextOutputFormat.class);
+        //job.setOutputKeyClass(Text.class);
+        //job.setOutputValueClass(Text.class);
+        //job.setMapOutputKeyClass(Text.class);
+        //job.setMapOutputValueClass(Text.class);
+        //job.setInputFormatClass(KeyValueTextInputFormat.class);
+        //job.setOutputFormatClass(TextOutputFormat.class);
+        //FileInputFormat.addInputPath(job, new Path(args[0]));
+        //FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        //boolean result = job.waitForCompletion(true);
+        //System.exit(result ? 0 : 1);
 
-
-        FileInputFormat.addInputPath(job, new Path(args[0]));
-        FileOutputFormat.setOutputPath(job, new Path(args[1]));
-        boolean result = job.waitForCompletion(true);
-        System.exit(result ? 0 : 1);
     }
   }
 }
