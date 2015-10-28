@@ -30,44 +30,65 @@ import org.apache.hadoop.mapred.Reporter;
 public class InvertedIndexer {
 
     //NOTES:
-    //* Collector gets ouputs from map() and reduce() Fxs
+    //* Collector gets ouputs from map() and reduce() Fxs. Explicitly defined.
+    //  - This shite (output/reporter) is pre-0.20 Java MapReduce API .... Context is newer (WTF)
     //* Mapper called once per line from input files
-    //  - Tokenize line into words using space AFTER converting symbols to space
-    //  - Outputs: (key=word, value=file(:line_num_instances?))
+    //  - Tokenize line into words using space AFTER lowercasing and converting non-alpha to space
+    //  - Outputs: (key=word, value=chapter) ... 
     //* Reducer collects all files per key
     //  - Single output per key=word are sorted values by total_num_instances and chapter (filename)
     //  - Value=file(:total_num_instances))
 
 
-    public static class InvertedIndexMapper extends MapReduceBase implements Mapper<Text, Text, Text, Text> {
+    public static class InvertedIndexMapper extends MapReduceBase implements Mapper<Object, Text, Text, Text> {
 
-        private Text word = new Text();
-        private Text val = new Text(); //file(:line_num_instances?)
+        public void map(Object key, Text value, OutputCollector<Text, Text> output, Reporter reporter)
+          throws IOException { // key not used?????
+          //For every instance in line, output {word,chapter} record
+            
+            FileSplit fSplit = (FileSplit) reporter.getInputSplit();
+            Text chapter = new Text(fSplit.getPath().getName());
+            String line = value.toString().toLowerCase();
 
-        public void map(Text key, Text val, OutputCollector<Text, Text> output, Reporter reporter)
-          throws IOException {
+            line = line.replaceAll("\\W"," ");
 
-            //BASIC PLACEHODER
-            output.collect(word, val);
+            String[] words = line.split();
+            Text word;
 
+            for (String w: words) {
+                word = new Text(w);
+
+                //SPIT OUT NEW RECORD -- ONE PER INSTANCE
+                output.collect(word, chapter);
+            }
         }
     }
 
+    public static class InvertedIndexReducer extends MapReduceBase implements Reducer<Text, Text, Text, SortedMapWritable> {
 
-    public static class InvertedIndexReducer extends MapReduceBase implements Reducer<Text, Text, Text, T4> {
+        public void reduce(Text word, Iterator<Text> values, OutputCollector<Text, SortedMapWritable> output, 
+          Reporter reporter) throws IOException {
 
-        public void reduce(Text key, Iterator<Text> values, OutputCollector<Text, T4> output, Reporter reporter)
-          throws IOException { //NEED to define T4 ... Sorted ArrayList?? Convert to Text??
+            SortedMapWritable numChapterMap = new SortedMapWritable();
+            Text chapter = null;
+            int num =null;
 
-
-
-            //BASIC PLACEHODER
             while (values.hasNext()) {
-                //Grab values.next()
-                //tokenize using : as delimeter
-                //Aggregate results in T4
+                //Grab values.next() --> value=chapter
+                chapter = (Text) values.next();
+                
+                //Aggregate results in Map ... get(chapter)++
+                if (numChapterMap.containsValue(chapter)) {
+                    num = numChapterMap.get(chapter).get();
+                    num++;
+                    numChapterMap.put(chapter, new IntWritable(num));
+                }
+                else {
+                   numChapterMap.put(chapter, new IntWritable(1));
+                }
             }
-            output.collect(key, T4 someStruct);
+
+            output.collect(word, numChapterMap);
         }
     }
 
@@ -81,7 +102,7 @@ public class InvertedIndexer {
    - convert every character into lower-case
    - mask non-alphabetic characters by white-space
    - sorted on occurrence-frequency
-   - print earlier chapter if tie
+   - output earlier chapter if tie --- WHERE?????
 
    *IMPLEMENTATION
    - Single-Node run, Hadoop 2.6.1
@@ -101,12 +122,16 @@ public class InvertedIndexer {
         //CONFIGURATION
         JobConf conf = new JobConf(InvertedIndexer.class);
         conf.setJobName("wordChapterCounter");
+
         conf.setMapperClass(InvertedIndexer.InvertedIndexMapper.class);
         conf.setReducerClass(InvertedIndexer.InvertedIndexReducer.class);
 
-        conf.setInputPath(new Path(args[0]));
-        conf.setOutputPath(new Path(args[1]));
-
+        conf.setInputFormat(TextInputFormat.class);
+        conf.setOutputFormat(TextOutputFormat.class);
+ 
+        FileInputFormat.setInputPaths(conf, new Path(args[0]));
+        FileOutputFormat.setOutputPath(conf, new Path(args[1]));
+        
         JobClient.runJob(conf);
 
         //Configuration conf = new Configuration();
