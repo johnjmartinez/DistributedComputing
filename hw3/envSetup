@@ -9,3 +9,5 @@ export YARN_HOME=$HADOOP_HOME                           # home to Yarn module
 export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop          # path to configurations
 export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin    # add Hadoop binaries to PATH
 
+export HADOOP_OPTS="-Djava.library.path=$HADOOP_HOME/lib"
+export HADOOP_OPTS="$HADOOP_OPTS -XX:-PrintWarnings -Djava.net.preferIPv4Stack=true"

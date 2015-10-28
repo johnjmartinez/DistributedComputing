@@ -93,9 +93,6 @@ public class InvertedIndexer {
     }
 
   /**
-   * The actual main() method for our program; this is the
-   * "driver" for the MapReduce job.
-   *
    * COUNTING INDEXER
    - identify files
    - calculate occurrences of every word that appear in given set of files above
@@ -116,7 +113,7 @@ public class InvertedIndexer {
    <file-name3, occurrence-frequency3>
    <file-name4, occurrence-frequency4>
    .
-   */
+   **/
 
     public static void main(String[] args) {
         //CONFIGURATION
