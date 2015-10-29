@@ -109,7 +109,7 @@ public class InvertedIndexer {
    .
    **/
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         //CONFIGURATION
         JobConf conf = new JobConf(InvertedIndexer.class);
         conf.setJobName("wordChapterCounter");
@@ -126,11 +126,7 @@ public class InvertedIndexer {
         FileInputFormat.setInputPaths(conf, new Path(args[0]));
         FileOutputFormat.setOutputPath(conf, new Path(args[1]));
 
-        try {
-            JobClient.runJob(conf);
-        }
-        catch (Exception e){}
-
+        JobClient.runJob(conf);
     }
 
     //http://stackoverflow.com/questions/28709769
@@ -141,9 +137,9 @@ public class InvertedIndexer {
 
         //st.sorted((a,b) -> b.getValue().compareTo(a.getValue()))
         st.sorted( (Entry<String, Integer> o1, Entry<String, Integer> o2) ->
-            { return o1.getValue().equals(o2.getValue()) ?
-                    o1.getKey().compareTo(o2.getKey()) : o2.getValue().compareTo(o1.getValue());
-            })
+                o1.getValue().equals(o2.getValue()) ?
+                        o1.getKey().compareTo(o2.getKey()) : o2.getValue().compareTo(o1.getValue())
+            )
             .forEach(e -> result.put(e.getKey(), e.getValue()));
 
         return result;

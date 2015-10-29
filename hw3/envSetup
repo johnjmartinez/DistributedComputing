@@ -1,3 +1,4 @@
+#!/bin/bash
 #Assumes WDIR=DistributedComputing/hw3 and HADOOP dir is in there
 wd=`pwd -P`
 

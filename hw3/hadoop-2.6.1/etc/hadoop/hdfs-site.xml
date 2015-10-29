@@ -23,10 +23,10 @@
     </property>
     <property>
         <name>dfs.namenode.name.dir</name>
-        <value>file:/home/johnjmar/uni/fall15/DistributedComputing/hw3/hadoop-2.6.1/hdfs/namenode</value>
+        <value>file:/home/johnjmar/Desktop/Uni/fall2015/DistributedComputing/hw3/hadoop-2.6.1/hdfs/namenode</value>
     </property>
     <property>
         <name>dfs.datanode.data.dir</name>
-        <value>file:/home/johnjmar/uni/fall15/DistributedComputing/hw3/hadoop-2.6.1/hdfs/datanode</value>
+        <value>file:/home/johnjmar/Desktop/Uni/fall2015/DistributedComputing/hw3/hadoop-2.6.1/hdfs/datanode</value>
     </property>
 </configuration>

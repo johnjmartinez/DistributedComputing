@@ -1,3 +1,4 @@
+#!/bin/bash
 #ASSUMES THE DOOP IS RUNNING AND SHIT
 common=hadoop-2.6.1/share/hadoop/common/hadoop-common-2.6.1.jar
 mapred_client=hadoop-2.6.1/share/hadoop/mapreduce/hadoop-mapreduce-client-core-2.6.1.jar
