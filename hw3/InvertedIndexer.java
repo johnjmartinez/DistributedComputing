@@ -1,28 +1,13 @@
 import java.io.IOException;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.StringTokenizer;
-import java.util.TreeMap;
+import java.lang.Exception;
+import java.lang.System;
+import java.util.*;
 
 //API DOC -- https://hadoop.apache.org/docs/r2.6.1/api/
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.MapWritable;
-import org.apache.hadoop.io.Text;
-import org.apache.hadoop.io.Writable;
-import org.apache.hadoop.mapred.FileInputFormat;
-import org.apache.hadoop.mapred.FileOutputFormat;
-import org.apache.hadoop.mapred.FileSplit;
-import org.apache.hadoop.mapred.JobClient;
-import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapred.MapReduceBase;
-import org.apache.hadoop.mapred.Mapper;
-import org.apache.hadoop.mapred.OutputCollector;
-import org.apache.hadoop.mapred.Reducer;
-import org.apache.hadoop.mapred.Reporter;
+import org.apache.hadoop.fs.*;
+import org.apache.hadoop.io.*;
+import org.apache.hadoop.mapred.*;
+
 
 // You may need to import other packages -- WTF
 
@@ -41,7 +26,7 @@ public class InvertedIndexer {
 
 
     public static class InvertedIndexMapper extends MapReduceBase implements Mapper<Object, Text, Text, Text> {
-
+        @Override
         public void map(Object key, Text value, OutputCollector<Text, Text> output, Reporter reporter)
           throws IOException { // key not used?????
           //For every instance in line, output {word,chapter} record
@@ -51,8 +36,9 @@ public class InvertedIndexer {
             String line = value.toString().toLowerCase();
 
             line = line.replaceAll("\\W"," ");
+            System.out.println(chapter+" line:"+line);
 
-            String[] words = line.split();
+            String[] words = line.split("\\s+");
             Text word;
 
             for (String w: words) {
@@ -64,22 +50,24 @@ public class InvertedIndexer {
         }
     }
 
-    public static class InvertedIndexReducer extends MapReduceBase implements Reducer<Text, Text, Text, SortedMapWritable> {
+    public static class InvertedIndexReducer extends MapReduceBase implements Reducer<Text, Text, Text, MapWritable> {
+        @Override
+        public void reduce(Text word, Iterator<Text> values, OutputCollector<Text, MapWritable> output, Reporter reporter)
+          throws IOException {
 
-        public void reduce(Text word, Iterator<Text> values, OutputCollector<Text, SortedMapWritable> output, 
-          Reporter reporter) throws IOException {
-
-            SortedMapWritable numChapterMap = new SortedMapWritable();
+            MapWritable numChapterMap = new MapWritable();
             Text chapter = null;
-            int num =null;
+            Integer num = null;
+            IntWritable val = null;
 
             while (values.hasNext()) {
                 //Grab values.next() --> value=chapter
                 chapter = (Text) values.next();
                 
                 //Aggregate results in Map ... get(chapter)++
-                if (numChapterMap.containsValue(chapter)) {
-                    num = numChapterMap.get(chapter).get();
+                if (numChapterMap.containsKey(chapter)) {
+                    val = (IntWritable) numChapterMap.get(chapter);
+                    num = val.get();
                     num++;
                     numChapterMap.put(chapter, new IntWritable(num));
                 }
@@ -123,34 +111,20 @@ public class InvertedIndexer {
         conf.setMapperClass(InvertedIndexer.InvertedIndexMapper.class);
         conf.setReducerClass(InvertedIndexer.InvertedIndexReducer.class);
 
+        conf.setMapOutputKeyClass(Text.class);
+        conf.setMapOutputValueClass(Text.class);
+
         conf.setInputFormat(TextInputFormat.class);
         conf.setOutputFormat(TextOutputFormat.class);
  
         FileInputFormat.setInputPaths(conf, new Path(args[0]));
         FileOutputFormat.setOutputPath(conf, new Path(args[1]));
-        
-        JobClient.runJob(conf);
 
-        //Configuration conf = new Configuration();
-        //Job job = new Job(conf, "wordChapterCounter");
-
-        //Job job = new Job(getConf());
-        //job.setJarByClass(getClass());
-        //job.setJobName(getClass().getSimpleName());
-        //job.setJarByClass(InvertedIndexer.class);
-
-        //KEYS AND I/O SETUP --- NEED TO CHANGE THESE
-        //job.setOutputKeyClass(Text.class);
-        //job.setOutputValueClass(Text.class);
-        //job.setMapOutputKeyClass(Text.class);
-        //job.setMapOutputValueClass(Text.class);
-        //job.setInputFormatClass(KeyValueTextInputFormat.class);
-        //job.setOutputFormatClass(TextOutputFormat.class);
-        //FileInputFormat.addInputPath(job, new Path(args[0]));
-        //FileOutputFormat.setOutputPath(job, new Path(args[1]));
-        //boolean result = job.waitForCompletion(true);
-        //System.exit(result ? 0 : 1);
+        try {
+            JobClient.runJob(conf);
+        }
+        catch (Exception e){}
 
     }
-  }
 }
+

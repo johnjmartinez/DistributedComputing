@@ -1,0 +1,13 @@
+#ASSUMES THE DOOP IS RUNNING AND SHIT
+common=hadoop-2.6.1/share/hadoop/common/hadoop-common-2.6.1.jar
+mapred_client=hadoop-2.6.1/share/hadoop/mapreduce/hadoop-mapreduce-client-core-2.6.1.jar
+
+rm -rf  *class *jar counts
+### CAUSES IT TO PUKE ### javac -classpath `hadoop classpath` InvertedIndexer.java
+javac -classpath ${common}:${mapred_client}  InvertedIndexer.java
+jar cf InvertedIndexer.jar  InvertedIndexer*.class 
+
+hdfs dfs -rm -r /counts
+hadoop jar InvertedIndexer.jar InvertedIndexer /pride-and-prejudice/ /counts/
+
+hdfs dfs -copyToLocal /counts 

@@ -1,5 +1,6 @@
 #!/bin/bash
 #format the storage for namenode.
+rm -rf hadoop-2.6.1/hdfs/*
 hadoop namenode -format
 
 #START DEAMONS
@@ -29,3 +30,8 @@ yarn-daemon.sh stop resourcemanager
 yarn-daemon.sh stop nodemanager
 mr-jobhistory-daemon.sh stop historyserver
 'jps'
+
+
+#http://localhost:50070/    NameNode
+#http://localhost:8088/     Cluster/ResourceManager
+#http://localhost:19888/    Jobhistory
