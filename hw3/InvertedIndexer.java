@@ -1,15 +1,13 @@
 import java.io.IOException;
-import java.lang.Exception;
-import java.lang.System;
+import java.lang.*;
 import java.util.*;
+import java.util.Map.*;
+import java.util.stream.*;
 
 //API DOC -- https://hadoop.apache.org/docs/r2.6.1/api/
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapred.*;
-
-
-// You may need to import other packages -- WTF
 
 
 public class InvertedIndexer {
@@ -42,6 +40,7 @@ public class InvertedIndexer {
             Text word;
 
             for (String w: words) {
+                if (w.equals("")) { continue; }
                 word = new Text(w);
 
                 //SPIT OUT NEW RECORD -- ONE PER INSTANCE
@@ -50,33 +49,40 @@ public class InvertedIndexer {
         }
     }
 
-    public static class InvertedIndexReducer extends MapReduceBase implements Reducer<Text, Text, Text, MapWritable> {
+    public static class InvertedIndexReducer extends MapReduceBase implements Reducer<Text, Text, Text, Text> {
         @Override
-        public void reduce(Text word, Iterator<Text> values, OutputCollector<Text, MapWritable> output, Reporter reporter)
+        public void reduce(Text word, Iterator<Text> values, OutputCollector<Text, Text> output, Reporter reporter)
           throws IOException {
 
-            MapWritable numChapterMap = new MapWritable();
+            Map<String, Integer> numChapterMap = new HashMap<>(62);
             Text chapter = null;
             Integer num = null;
-            IntWritable val = null;
+            String out = "\n";
+            String keyChptr = null;
 
             while (values.hasNext()) {
                 //Grab values.next() --> value=chapter
                 chapter = (Text) values.next();
-                
+                keyChptr = chapter.toString();
+
                 //Aggregate results in Map ... get(chapter)++
-                if (numChapterMap.containsKey(chapter)) {
-                    val = (IntWritable) numChapterMap.get(chapter);
-                    num = val.get();
+                if (numChapterMap.containsKey(keyChptr)){
+                    num = (Integer) numChapterMap.get(keyChptr);
                     num++;
-                    numChapterMap.put(chapter, new IntWritable(num));
+                    numChapterMap.put(keyChptr, num);
                 }
                 else {
-                   numChapterMap.put(chapter, new IntWritable(1));
+                   numChapterMap.put(keyChptr, 1);
                 }
             }
 
-            output.collect(word, numChapterMap);
+            //SORT AND FORMAT OUTPUT
+            numChapterMap = sortByValue( numChapterMap );
+            for( Entry<String, Integer> entry : numChapterMap.entrySet()) {
+                out += "<"+entry.getKey()+", "+entry.getValue()+">\n";
+            }
+
+            output.collect(word, new Text(out));
         }
     }
 
@@ -87,7 +93,7 @@ public class InvertedIndexer {
    - convert every character into lower-case
    - mask non-alphabetic characters by white-space
    - sorted on occurrence-frequency
-   - output earlier chapter if tie --- WHERE?????
+   - output earlier chapter if tie --- Assuming /output
 
    *IMPLEMENTATION
    - Single-Node run, Hadoop 2.6.1
@@ -126,5 +132,24 @@ public class InvertedIndexer {
         catch (Exception e){}
 
     }
+
+    //http://stackoverflow.com/questions/28709769
+    public static Map<String,Integer> sortByValue( Map<String,Integer> map ) {
+
+        Map<String,Integer> result = new LinkedHashMap<>();
+        Stream <Entry<String,Integer>> st = map.entrySet().stream();
+
+        //st.sorted((a,b) -> b.getValue().compareTo(a.getValue()))
+        st.sorted( (Entry<String, Integer> o1, Entry<String, Integer> o2) ->
+            { return o1.getValue().equals(o2.getValue()) ?
+                    o1.getKey().compareTo(o2.getKey()) : o2.getValue().compareTo(o1.getValue());
+            })
+            .forEach(e -> result.put(e.getKey(), e.getValue()));
+
+        return result;
+    }
+
 }
+
+
 
